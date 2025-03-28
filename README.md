@@ -1,5 +1,5 @@
 # What is this
-The workspace for Occlussion
+The workspace for Occlussion <br>
 Coded with Roo Code: https://github.com/RooVetGit/Roo-Code
 
 # Directories
@@ -7,6 +7,7 @@ Coded with Roo Code: https://github.com/RooVetGit/Roo-Code
 - `/Systems`: Basic system of rendering, creating test images, etc.
 - `/Interfaces`: Interface of algorithms and DataModels. It is defined for consistency with the AI generated code
 - `/Occlusions`: Occlusion algorithms
+- `/LocalData`: The localdata do not commited, need to get localy
 
 # References
 ```
