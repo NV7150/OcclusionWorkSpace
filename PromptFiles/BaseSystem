@@ -7,7 +7,7 @@ This base framework has functionality like below:
     - imu data is a csv, and in `imu.csv`
     - DO NOT hard-code this for future changes
     - The directory may be multiple, like `/data/*`
-    
+
 2. The framework loads the 3D object files and .json files for 3D contents from the directory path defined in runtime parameters:
     - 3D object file is like `{id}.obj` or `{id}.fbx`
     - json file is one file per directory, and describe the scene like:
@@ -21,11 +21,14 @@ This base framework has functionality like below:
 }
 ```
 For futher information, please refer LocalData/DepthIMUData1/*/*.json
+Also, the loaded data should be formed into Frame object defined in Interfaces/Frame.py. 
+If there are some rack of properties, please ask me.
 
-3. The framework has a abstract class named "OcclusionProvider" and abstract class named "getMask(rgb, depth, imu)". And it call that method based on time stamp. So that it can get occlusion mask. After that, the framework renders the mixed reality scene image according to occlusion mask and scene json file. After completed, it outputs the result images to the output directory defined in runtime parapeters.
+3. The framework has a abstract class named "OcclusionProvider" (in Interfarce/OcclusionProvider.py) and abstract class named "getMask(self, Frame)". And it call that method based on time stamp. So that it can get occlusion mask. After that, the framework renders the mixed reality scene image according to occlusion mask and scene json file. After completed, it outputs the result images to the output directory defined in runtime parapeters.
 
 If you have any kinds of questions, feel free to ask me.
 Please make this framework readable and modulable for future extension.
+After all is done, please write a api document in "BaseSystem.md".
 Do not forget to create the code architecture document after your coding.
-Let's do this step-by-step.
+Let's do this step-by-step, but please edit 1 time in the solo file not to waste my tokens and money.
     
