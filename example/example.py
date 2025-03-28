@@ -1,9 +1,9 @@
 import os
 import sys
-# Add parent directory to path so we can import from systems and occlusions
+# Add parent directory to path so we can import from Systems and Occlusions
 sys.path.append('..')
-from systems.BaseSystem import BaseSystem
-from occlusions.DepthThresholdOcclusion import DepthThresholdOcclusion, DepthGradientOcclusion
+from Systems.BaseSystem import BaseSystem
+from Occlusions.DepthThresholdOcclusion import DepthThresholdOcclusion, DepthGradientOcclusion
 
 
 def main():

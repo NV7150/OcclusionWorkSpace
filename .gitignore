@@ -1,6 +1,7 @@
 /LocalData
 /ReferPapers
 /Output
+**/Output/**
 
 # Byte-compiled / optimized / DLL files
 *.py[cod]

@@ -3,9 +3,9 @@ import argparse
 import numpy as np
 from typing import Dict, List, Any, Optional
 import glob
-from systems.DataLoader import DataLoader
-from systems.ModelLoader import ModelLoader
-from systems.Renderer import Renderer
+from Systems.DataLoader import DataLoader
+from Systems.ModelLoader import ModelLoader
+from Systems.Renderer import Renderer
 from Interfaces.OcclusionProvider import OcclusionProvider
 from Interfaces.Frame import Frame
 

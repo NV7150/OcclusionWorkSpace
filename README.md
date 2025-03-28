@@ -1,5 +1,12 @@
+# What is this
+The workspace for Occlussion
+Coded with Roo Code: https://github.com/RooVetGit/Roo-Code
+
 # Directories
 - `/PromptFiles` : Prompt that used for Roo Code
+- `/Systems`: Basic system of rendering, creating test images, etc.
+- `/Interfaces`: Interface of algorithms and DataModels. It is defined for consistency with the AI generated code
+- `/Occlusions`: Occlusion algorithms
 
 # References
 ```
