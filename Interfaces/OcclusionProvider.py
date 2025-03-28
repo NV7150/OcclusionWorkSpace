@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
-import Frame
+from . import Frame
 
 ## Provides occlusion mask (interface for accurate AI code generation)
 class OcclusionProvider(metaclass=ABCMeta):
