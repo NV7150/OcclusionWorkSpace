@@ -1,0 +1,31 @@
+I want to create a Python program that process the occlusion for mixed reality.
+I'm considering multiple occlusion algorithm, so I firstly thinking create a base occlusion framework
+This base framework has functionality like below:
+1. Load rgb images, depth images and imu data from the directory path defined in runtime parameters
+    - rgb image is like `rgb_{timestamp}.png`
+    - depth image is like `depth_{timestamp}.png`
+    - imu data is a csv, and in `imu.csv`
+    - DO NOT hard-code this for future changes
+    - The directory may be multiple, like `/data/*`
+    
+2. The framework loads the 3D object files and .json files for 3D contents from the directory path defined in runtime parameters:
+    - 3D object file is like `{id}.obj` or `{id}.fbx`
+    - json file is one file per directory, and describe the scene like:
+```
+{
+    "(id)": {
+        "position": {"x": x, "y": y, "z": z},
+        "rotation": {"x": x, "y": y, "z": z, "w", w},
+    },
+    ....
+}
+```
+For futher information, please refer LocalData/DepthIMUData1/*/*.json
+
+3. The framework has a abstract class named "OcclusionProvider" and abstract class named "getMask(rgb, depth, imu)". And it call that method based on time stamp. So that it can get occlusion mask. After that, the framework renders the mixed reality scene image according to occlusion mask and scene json file. After completed, it outputs the result images to the output directory defined in runtime parapeters.
+
+If you have any kinds of questions, feel free to ask me.
+Please make this framework readable and modulable for future extension.
+Do not forget to create the code architecture document after your coding.
+Let's do this step-by-step.
+    
