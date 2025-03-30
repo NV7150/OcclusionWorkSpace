@@ -10,6 +10,9 @@ def main():
     """
     Example usage of the Occlusion Framework.
     """
+    
+    file_id = input()
+    
     # Define directories
     data_dirs = [
         os.path.join('..', 'LocalData', 'DepthIMUData1', 'Fast2Slow'),
@@ -33,6 +36,7 @@ def main():
         data_dirs=data_dirs,
         model_dirs=model_dirs,
         output_dir=output_dir,
+        output_prefix=f"{file_id}",
         occlusion_provider=occlusion_provider
     )
     

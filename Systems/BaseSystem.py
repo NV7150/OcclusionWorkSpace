@@ -20,7 +20,9 @@ class BaseSystem:
                  data_dirs: List[str], 
                  model_dirs: List[str], 
                  output_dir: str,
-                 occlusion_provider: OcclusionProvider):
+                 output_prefix: str,
+                 occlusion_provider: OcclusionProvider,
+                 ):
         """
         Initialize the BaseSystem with directories and an occlusion provider.
         
@@ -34,6 +36,7 @@ class BaseSystem:
         self.model_dirs = model_dirs
         self.output_dir = output_dir
         self.occlusion_provider = occlusion_provider
+        self.output_prefix = output_prefix
         
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
@@ -97,7 +100,8 @@ class BaseSystem:
             frames_list, 
             self.occlusion_masks, 
             self.models, 
-            scene_data
+            scene_data,
+            self.output_prefix
         )
         print(f"Rendered {len(output_paths)} frames")
         print(f"Output saved to {self.output_dir}")

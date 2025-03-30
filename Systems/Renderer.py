@@ -52,8 +52,7 @@ class ObjModel(Model3D):
 
 class FbxModel(Model3D):
     """
-    Class for loading and rendering 3D FBX models.
-    This is a simplified version that renders a basic cube for testing.
+    Class for loading and rendering 3D FBX models using PyAssimp.
     """
     
     def __init__(self, file_path: str):
@@ -64,12 +63,48 @@ class FbxModel(Model3D):
             file_path: Path to the FBX file
         """
         self.file_path = file_path
-        print(f"Loading simplified FBX model from {file_path}")
+        print(f"Loading FBX model from {file_path}")
         
-    def render(self):
-        """
-        Render a simple cube as a placeholder for the FBX model.
-        """
+        # Store vertices, faces, and materials for rendering
+        self.vertices = []
+        self.faces = []
+        self.materials = []
+        
+        try:
+            # Use pyassimp to load the model
+            with pyassimp.load(file_path, processing=pyassimp.postprocess.aiProcess_Triangulate) as scene:
+                if not scene or not scene.meshes:
+                    raise ValueError(f"No meshes found in {file_path}")
+                
+                # Extract mesh data for rendering
+                for mesh in scene.meshes:
+                    # Store vertices
+                    vertices = []
+                    for v in mesh.vertices:
+                        vertices.append([v[0], v[1], v[2]])
+                    
+                    # Store faces
+                    faces = []
+                    for face in mesh.faces:
+                        if len(face) == 3:  # Only use triangular faces
+                            faces.append([face[0], face[1], face[2]])
+                    
+                    # Store material index
+                    material_index = mesh.materialindex if hasattr(mesh, 'materialindex') else 0
+                    
+                    self.vertices.append(vertices)
+                    self.faces.append(faces)
+                    self.materials.append(material_index)
+                
+                print(f"Loaded model with {len(self.vertices)} meshes")
+        except Exception as e:
+            print(f"Error loading FBX model: {e}")
+            # Create a simple cube as fallback
+            self._create_fallback_cube()
+    
+    def _create_fallback_cube(self):
+        """Create a simple cube as fallback if model loading fails"""
+        print("Creating fallback cube model")
         # Define the vertices of a cube
         vertices = [
             # Front face
@@ -78,30 +113,76 @@ class FbxModel(Model3D):
             [-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5]
         ]
         
-        # Define the faces of the cube (as quads for simplicity)
+        # Define the faces of the cube as triangles
         faces = [
-            [0, 1, 2, 3],  # Front face
-            [1, 5, 6, 2],  # Right face
-            [5, 4, 7, 6],  # Back face
-            [4, 0, 3, 7],  # Left face
-            [3, 2, 6, 7],  # Top face
-            [4, 5, 1, 0]   # Bottom face
+            # Front face
+            [0, 1, 2], [0, 2, 3],
+            # Right face
+            [1, 5, 6], [1, 6, 2],
+            # Back face
+            [5, 4, 7], [5, 7, 6],
+            # Left face
+            [4, 0, 3], [4, 3, 7],
+            # Top face
+            [3, 2, 6], [3, 6, 7],
+            # Bottom face
+            [4, 5, 1], [4, 1, 0]
         ]
         
-        # Set material properties
+        self.vertices = [vertices]
+        self.faces = [faces]
+        self.materials = [0]
+        
+    def render(self):
+        """
+        Render the FBX model using OpenGL.
+        """
+        # Set default material properties
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [0.8, 0.8, 0.8, 1.0])
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
         glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
         glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 50.0)
         
-        # Render each face of the cube
-        for face in faces:
-            glBegin(GL_QUADS)
-            for vertex_idx in face:
-                # Set a normal pointing outward
-                x, y, z = vertices[vertex_idx]
-                glNormal3f(x, y, z)
-                glVertex3f(x, y, z)
+        # Render each mesh
+        for mesh_idx in range(len(self.vertices)):
+            vertices = self.vertices[mesh_idx]
+            faces = self.faces[mesh_idx]
+            
+            # Render mesh triangles
+            glBegin(GL_TRIANGLES)
+            for face in faces:
+                # Calculate face normal for lighting
+                v0 = vertices[face[0]]
+                v1 = vertices[face[1]]
+                v2 = vertices[face[2]]
+                
+                # Calculate normal vector using cross product
+                ux = v1[0] - v0[0]
+                uy = v1[1] - v0[1]
+                uz = v1[2] - v0[2]
+                
+                vx = v2[0] - v0[0]
+                vy = v2[1] - v0[1]
+                vz = v2[2] - v0[2]
+                
+                nx = uy * vz - uz * vy
+                ny = uz * vx - ux * vz
+                nz = ux * vy - uy * vx
+                
+                # Normalize the normal vector
+                length = (nx * nx + ny * ny + nz * nz) ** 0.5
+                if length > 0:
+                    nx /= length
+                    ny /= length
+                    nz /= length
+                
+                # Set normal for all vertices of this face
+                glNormal3f(nx, ny, nz)
+                
+                # Render vertices
+                for vertex_idx in face:
+                    vertex = vertices[vertex_idx]
+                    glVertex3f(vertex[0], vertex[1], vertex[2])
             glEnd()
 
 
@@ -212,7 +293,7 @@ class Renderer:
         rotation_matrix = quat.matrix33
         glMultMatrixf(pyrr.matrix44.create_from_matrix33(rotation_matrix))
         
-    def render_frame(self, frame: Frame, occlusion_mask: np.ndarray, 
+    def render_frame(self, frame: Frame, occlusion_mask: np.ndarray,
                      models: Dict[str, Any], scene_data: Dict) -> np.ndarray:
         """
         Render a mixed reality frame based on the occlusion mask and scene description.
@@ -220,8 +301,9 @@ class Renderer:
         Args:
             frame: Frame object containing RGB and depth images
             occlusion_mask: Binary mask indicating occluded areas
-            models: Dictionary of 3D models
-            scene_data: Scene description dictionary
+            models: Dictionary of 3D models with keys matching scene_data keys
+                    Each entry should have a 'file_path' key with the path to the model file
+            scene_data: Scene description dictionary with position and rotation for each model
             
         Returns:
             Rendered image as a numpy array
@@ -264,26 +346,75 @@ class Renderer:
         glLoadIdentity()
         gluLookAt(0, 0, 5, 0, 0, 0, 0, 1, 0)
         
+        # Print debug info about models and scene data
+        print(f"Scene data contains {len(scene_data)} objects")
+        print(f"Models dictionary contains {len(models)} entries")
+        
         # Render each object in the scene
         for obj_id, obj_data in scene_data.items():
+            print(f"Processing object: {obj_id}")
+            
             if obj_id in models:
                 model_data = models[obj_id]
+                
+                if 'file_path' not in model_data:
+                    print(f"Warning: No file_path specified for model {obj_id}")
+                    continue
+                    
                 model_path = model_data['file_path']
+                print(f"Loading model from: {model_path}")
                 
-                # Load model
-                model = self.load_model(model_path)
+                # Check if file exists
+                if not os.path.exists(model_path):
+                    print(f"Warning: Model file does not exist: {model_path}")
+                    
+                    # Try different path variations
+                    possible_paths = [
+                        # Try absolute path from project root
+                        os.path.join(os.getcwd(), "LocalData", "Models", "Scene1", os.path.basename(model_path)),
+                        # Try relative path from current directory
+                        os.path.join("LocalData", "Models", "Scene1", os.path.basename(model_path)),
+                        # Try just the filename in Scene1 directory
+                        os.path.join("LocalData", "Models", "Scene1", os.path.basename(model_path).split('/')[-1]),
+                        # Try with parent directory
+                        os.path.join("..", "LocalData", "Models", "Scene1", os.path.basename(model_path))
+                    ]
+                    
+                    found = False
+                    for alt_path in possible_paths:
+                        print(f"Trying alternative path: {alt_path}")
+                        if os.path.exists(alt_path):
+                            print(f"Found model at alternative path: {alt_path}")
+                            model_path = alt_path
+                            found = True
+                            break
+                    
+                    if not found:
+                        print(f"Could not find model file: {os.path.basename(model_path)}")
+                        continue
                 
-                # Push matrix for this object
-                glPushMatrix()
-                
-                # Apply object transform
-                self.apply_transform(obj_data['position'], obj_data['rotation'])
-                
-                # Render model
-                model.render()
-                
-                # Pop matrix
-                glPopMatrix()
+                try:
+                    # Load model
+                    model = self.load_model(model_path)
+                    
+                    # Push matrix for this object
+                    glPushMatrix()
+                    
+                    # Apply object transform
+                    if 'position' in obj_data and 'rotation' in obj_data:
+                        self.apply_transform(obj_data['position'], obj_data['rotation'])
+                    else:
+                        print(f"Warning: Missing position or rotation data for {obj_id}")
+                    
+                    # Render model
+                    model.render()
+                    
+                    # Pop matrix
+                    glPopMatrix()
+                except Exception as e:
+                    print(f"Error rendering model {obj_id}: {e}")
+            else:
+                print(f"Warning: Object {obj_id} specified in scene data but not found in models dictionary")
         
         # Read pixels from framebuffer
         glReadBuffer(GL_COLOR_ATTACHMENT0)
@@ -355,7 +486,7 @@ class Renderer:
         
         return blended_image
     
-    def save_rendered_image(self, image: np.ndarray, timestamp: np.datetime64) -> str:
+    def save_rendered_image(self, image: np.ndarray, timestamp: np.datetime64, file_prefix: str) -> str:
         """
         Save a rendered image to the output directory.
         
@@ -370,7 +501,7 @@ class Renderer:
         timestamp_str = str(timestamp).replace(':', '-').replace(' ', '_')
         
         # Create output filename
-        output_filename = f"rendered_{timestamp_str}.png"
+        output_filename = f"{file_prefix}_{timestamp_str}.png"
         output_path = os.path.join(self.output_dir, output_filename)
         
         # Save image
@@ -381,7 +512,9 @@ class Renderer:
     def render_and_save_batch(self, frames: List[Frame], 
                              occlusion_masks: Dict[np.datetime64, np.ndarray],
                              models: Dict[str, Any], 
-                             scene_data: Dict) -> List[str]:
+                             scene_data: Dict,
+                             output_prefix: str
+                             ) -> List[str]:
         """
         Render and save a batch of frames.
         
@@ -407,7 +540,7 @@ class Renderer:
             rendered_image = self.render_frame(frame, occlusion_mask, models, scene_data)
             
             # Save rendered image
-            output_path = self.save_rendered_image(rendered_image, frame.timestamp)
+            output_path = self.save_rendered_image(rendered_image, frame.timestamp, output_prefix)
             output_paths.append(output_path)
             
         return output_paths
