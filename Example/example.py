@@ -11,7 +11,8 @@ def main():
     Example usage of the Occlusion Framework.
     """
     
-    file_id = input()
+    dir_id = input("enter the output dir >")
+    file_id = input("enter the file id >")
     
     # Define directories
     data_dirs = [
@@ -23,7 +24,8 @@ def main():
         os.path.join('..', 'LocalData', 'Models', 'Scene1'),
     ]
     
-    output_dir = os.path.join('..', 'Output')
+    output_dir = os.path.join('..', 'Output', dir_id)
+    os.makedirs(output_dir, exist_ok=True)
     
     # Create occlusion provider
     # You can choose between DepthThresholdOcclusion and DepthGradientOcclusion

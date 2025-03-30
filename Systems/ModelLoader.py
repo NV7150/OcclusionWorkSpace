@@ -115,8 +115,12 @@ class ModelLoader:
         object_data = scene.get(object_id)
         if not object_data:
             return None
-            
+        
+        position = object_data.get('position', {'x': 0, 'y': 0, 'z': 0})
+        rotation = object_data.get('rotation', {'x': 0, 'y': 0, 'z': 0, 'w': 1})
+        
+        # Pass the rotation data as is - Renderer will handle the conversion
         return {
-            'position': object_data.get('position', {'x': 0, 'y': 0, 'z': 0}),
-            'rotation': object_data.get('rotation', {'x': 0, 'y': 0, 'z': 0, 'w': 1})
+            'position': position,
+            'rotation': rotation
         }

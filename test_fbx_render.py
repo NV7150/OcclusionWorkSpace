@@ -10,22 +10,14 @@ import argparse
 import numpy as np
 from datetime import datetime
 
-# Try to import PIL for image creation
-try:
-    from PIL import Image, ImageDraw, ImageFont
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
-    print("PIL not available. Cannot create images.")
+# Import PIL for image creation
+from PIL import Image, ImageDraw, ImageFont
+PIL_AVAILABLE = True
 
-# Try to import pyassimp for model loading
-try:
-    import pyassimp
-    import pyassimp.postprocess
-    PYASSIMP_AVAILABLE = True
-except ImportError:
-    PYASSIMP_AVAILABLE = False
-    print("pyassimp not available. Cannot load 3D models.")
+# Import pyassimp for model loading
+import pyassimp
+import pyassimp.postprocess
+PYASSIMP_AVAILABLE = True
 
 
 class Vector3:
@@ -287,72 +279,60 @@ class FbxModel:
             self._create_fallback_cube()
             return
         
-        try:
-            # Try to load the model with pyassimp
-            print("Using pyassimp to load the model...")
-            self._load_with_pyassimp()
-            
-            if not self.vertices:
-                # If pyassimp failed, create a fallback cube
-                print("Failed to load model with pyassimp, creating fallback cube")
-                self._create_fallback_cube()
-                
-        except Exception as e:
-            print(f"Error loading model: {e}")
-            # Create a fallback cube
+        # Load the model with pyassimp
+        print("Using pyassimp to load the model...")
+        self._load_with_pyassimp()
+        
+        if not self.vertices:
+            # If pyassimp failed, create a fallback cube
+            print("Failed to load model with pyassimp, creating fallback cube")
             self._create_fallback_cube()
     
     def _load_with_pyassimp(self):
         """Load the model using pyassimp"""
-        try:
-            # Use pyassimp to load the model
-            processing_flags = (
-                pyassimp.postprocess.aiProcess_Triangulate | 
-                pyassimp.postprocess.aiProcess_GenNormals
-            )
+        # Use pyassimp to load the model
+        processing_flags = (
+            pyassimp.postprocess.aiProcess_Triangulate |
+            pyassimp.postprocess.aiProcess_GenNormals
+        )
+        
+        with pyassimp.load(self.fbx_path, processing=processing_flags) as scene:
+            if not scene or not scene.meshes:
+                print("No meshes found in the model")
+                return
             
-            with pyassimp.load(self.fbx_path, processing=processing_flags) as scene:
-                if not scene or not scene.meshes:
-                    print("No meshes found in the model")
-                    return
+            print(f"Model loaded successfully with {len(scene.meshes)} meshes")
+            
+            # Extract mesh data for rendering
+            for mesh_idx, mesh in enumerate(scene.meshes):
+                print(f"Processing mesh {mesh_idx} with {len(mesh.vertices)} vertices and {len(mesh.faces)} faces")
                 
-                print(f"Model loaded successfully with {len(scene.meshes)} meshes")
+                # Store vertices
+                vertices = []
+                for v in mesh.vertices:
+                    vertices.append(Vector3(v[0], v[1], v[2]))
                 
-                # Extract mesh data for rendering
-                for mesh_idx, mesh in enumerate(scene.meshes):
-                    print(f"Processing mesh {mesh_idx} with {len(mesh.vertices)} vertices and {len(mesh.faces)} faces")
-                    
-                    # Store vertices
-                    vertices = []
-                    for v in mesh.vertices:
-                        vertices.append(Vector3(v[0], v[1], v[2]))
-                    
-                    # Store faces and create triangles
-                    faces = []
-                    for face in mesh.faces:
-                        if len(face) == 3:  # Only use triangular faces
-                            faces.append([face[0], face[1], face[2]])
-                            
-                            # Add triangle to mesh
-                            self.mesh.add_triangle(
-                                vertices[face[0]],
-                                vertices[face[1]],
-                                vertices[face[2]]
-                            )
-                    
-                    # Store material index
-                    material_index = mesh.materialindex if hasattr(mesh, 'materialindex') else 0
-                    
-                    self.vertices.append(vertices)
-                    self.faces.append(faces)
-                    self.materials.append(material_index)
+                # Store faces and create triangles
+                faces = []
+                for face in mesh.faces:
+                    if len(face) == 3:  # Only use triangular faces
+                        faces.append([face[0], face[1], face[2]])
+                        
+                        # Add triangle to mesh
+                        self.mesh.add_triangle(
+                            vertices[face[0]],
+                            vertices[face[1]],
+                            vertices[face[2]]
+                        )
                 
-                print(f"Extracted {len(self.vertices)} meshes for rendering")
+                # Store material index
+                material_index = mesh.materialindex if hasattr(mesh, 'materialindex') else 0
                 
-        except Exception as e:
-            print(f"Error in pyassimp loading: {e}")
-            # Let the caller handle the fallback
-            raise
+                self.vertices.append(vertices)
+                self.faces.append(faces)
+                self.materials.append(material_index)
+            
+            print(f"Extracted {len(self.vertices)} meshes for rendering")
     
     def _create_fallback_cube(self):
         """Create a simple cube as fallback if model loading fails"""
@@ -472,7 +452,7 @@ def find_fbx_file(fbx_path):
     return None
 
 
-def render_model(model, width, height, output_path=None, rotation_y=30, rotation_x=15):
+def render_model(model, width, height, output_path=None, out_dir="Output", rotation_y=30, rotation_x=15):
     """Render the model to an image file"""
     if not PIL_AVAILABLE:
         print("PIL not available. Cannot render model.")
@@ -482,34 +462,30 @@ def render_model(model, width, height, output_path=None, rotation_y=30, rotation
     if output_path is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         base_name = os.path.splitext(os.path.basename(model.fbx_path))[0]
-        output_path = f"{base_name}_{timestamp}.png"
+        output_path = os.path.join(out_dir, f"{base_name}_{timestamp}.png")
     
-    try:
-        # Create renderer
-        renderer = SoftwareRenderer(width, height)
-        
-        # Set up camera and transformations
-        camera_pos = Vector3(0, 0, 3)
-        light_dir = Vector3(0.5, -1, -0.5)
-        
-        # Create transformation matrices
-        projection = Matrix4x4.perspective(45.0, width / height, 0.1, 100.0)
-        rotation = Matrix4x4.rotation_y(rotation_y).multiply(Matrix4x4.rotation_x(rotation_x))
-        
-        # Transform mesh
-        transformed_mesh = model.mesh.transform(rotation)
-        
-        # Render the mesh
-        renderer.clear()
-        renderer.render_mesh(transformed_mesh, camera_pos, light_dir)
-        
-        # Save the image
-        if renderer.save_image(output_path):
-            return True
-        return False
-    except Exception as e:
-        print(f"Error rendering model: {e}")
-        return False
+    # Create renderer
+    renderer = SoftwareRenderer(width, height)
+    
+    # Set up camera and transformations
+    camera_pos = Vector3(0, 0, 3)
+    light_dir = Vector3(0.5, -1, -0.5)
+    
+    # Create transformation matrices
+    projection = Matrix4x4.perspective(45.0, width / height, 0.1, 100.0)
+    rotation = Matrix4x4.rotation_y(rotation_y).multiply(Matrix4x4.rotation_x(rotation_x))
+    
+    # Transform mesh
+    transformed_mesh = model.mesh.transform(rotation)
+    
+    # Render the mesh
+    renderer.clear()
+    renderer.render_mesh(transformed_mesh, camera_pos, light_dir)
+    
+    # Save the image
+    if renderer.save_image(output_path):
+        return True
+    return False
 
 
 def parse_arguments():
