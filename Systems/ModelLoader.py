@@ -3,7 +3,7 @@ import json
 import glob
 from typing import Dict, List, Optional, Any, Tuple
 import numpy as np
-from Systems.Logger import logger
+from Logger import logger, Logger
 
 
 class ModelLoader:
@@ -37,7 +37,7 @@ class ModelLoader:
             json_files = glob.glob(os.path.join(model_dir, '*.json'))
             
             if not json_files:
-                logger.warning(f"No JSON scene description found in {model_dir}")
+                logger.log(Logger.WARNING, f"No JSON scene description found in {model_dir}")
                 continue
                 
             # Use the first JSON file found (there should be only one per directory)
@@ -48,9 +48,9 @@ class ModelLoader:
                 with open(scene_file, 'r') as f:
                     scene_data = json.load(f)
                     self.scenes[dir_name] = scene_data
-                    logger.model(f"Loaded scene description from {scene_file}")
+                    logger.log(Logger.MODEL, f"Loaded scene description from {scene_file}")
             except Exception as e:
-                logger.error(f"Error loading scene description from {scene_file}: {e}")
+                logger.log(Logger.ERROR, f"Error loading scene description from {scene_file}: {e}")
                 continue
                 
             # Load 3D model files (both OBJ and FBX)
@@ -71,7 +71,7 @@ class ModelLoader:
                             'format': file_ext[1:],  # 'obj' or 'fbx' without the dot
                         }
                     except Exception as e:
-                        logger.error(f"Error loading model from {model_file}: {e}")
+                        logger.log(Logger.ERROR, f"Error loading model from {model_file}: {e}")
         
         return self.models, self.scenes
     

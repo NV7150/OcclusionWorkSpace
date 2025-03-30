@@ -3,7 +3,7 @@ import sys
 # Add parent directory to path so we can import from Systems and Occlusions
 sys.path.append('..')
 from Systems.BaseSystem import BaseSystem
-from Systems.Logger import Logger, logger
+from Logger import Logger, logger
 from Occlusions.DepthThresholdOcclusion import DepthThresholdOcclusion, DepthGradientOcclusion
 
 
@@ -19,13 +19,13 @@ def main():
     log_options = input("Enter log options (comma-separated, leave empty for default) >").strip()
     if log_options:
         # Parse log options
-        log_categories = [option.strip() for option in log_options.split(',')]
-        logger.configure(enabled_categories=log_categories)
-        logger.system(f"Enabled log categories: {log_categories}")
+        log_keys = [option.strip() for option in log_options.split(',')]
+        logger.configure(enabled_log_keys=log_keys)
+        logger.log(Logger.SYSTEM, f"Enabled log keys: {log_keys}")
     else:
         # Default to system logs and errors only
-        logger.configure(enabled_categories=["system-logs", "error-logs"])
-        logger.system("Using default log categories: system-logs, error-logs")
+        logger.configure(enabled_log_keys=[Logger.SYSTEM, Logger.ERROR])
+        logger.log(Logger.SYSTEM, "Using default log keys: system, error")
     
     # Define directories
     data_dirs = [
@@ -53,14 +53,14 @@ def main():
         output_dir=output_dir,
         output_prefix=f"{file_id}",
         occlusion_provider=occlusion_provider,
-        log_options=logger.enabled_categories,
+        log_keys=logger.enabled_log_keys,
         log_to_file=False
     )
     
     # Process all data
     system.process()
     
-    logger.system("Processing complete. Results saved to: " + output_dir)
+    logger.log(Logger.SYSTEM, "Processing complete. Results saved to: " + output_dir)
 
 
 if __name__ == '__main__':

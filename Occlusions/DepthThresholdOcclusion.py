@@ -3,6 +3,7 @@ from scipy.ndimage import gaussian_filter, binary_dilation
 
 from Interfaces.OcclusionProvider import OcclusionProvider
 from Interfaces.Frame import Frame
+from Logger import logger, Logger
 
 
 class DepthThresholdOcclusion(OcclusionProvider):
@@ -20,6 +21,7 @@ class DepthThresholdOcclusion(OcclusionProvider):
         """
         self.threshold = threshold
         self.max_depth = max_depth
+        logger.log(Logger.OCCLUSION, f"Initialized DepthThresholdOcclusion with threshold={threshold}, max_depth={max_depth}")
         
     def occlusion(self, frame: Frame) -> np.ndarray:
         """
@@ -31,6 +33,8 @@ class DepthThresholdOcclusion(OcclusionProvider):
         Returns:
             Binary mask indicating occluded areas (1 = occluded, 0 = not occluded)
         """
+        logger.log(Logger.DEBUG, f"Generating occlusion mask for frame with timestamp {frame.timestamp}")
+        
         # Get depth image
         depth_image = frame.depth
         
@@ -40,6 +44,12 @@ class DepthThresholdOcclusion(OcclusionProvider):
         # Create occlusion mask based on threshold
         # Pixels with depth less than threshold are considered occluded (foreground objects)
         occlusion_mask = (normalized_depth < self.threshold).astype(np.uint8)
+        
+        # Log statistics about the mask
+        occluded_pixels = np.sum(occlusion_mask)
+        total_pixels = occlusion_mask.size
+        occluded_percentage = (occluded_pixels / total_pixels) * 100
+        logger.log(Logger.DEBUG, f"Occlusion mask generated: {occluded_percentage:.2f}% of pixels occluded")
         
         return occlusion_mask
 
@@ -59,6 +69,7 @@ class DepthGradientOcclusion(OcclusionProvider):
         """
         self.gradient_threshold = gradient_threshold
         self.blur_size = blur_size
+        logger.log(Logger.OCCLUSION, f"Initialized DepthGradientOcclusion with gradient_threshold={gradient_threshold}, blur_size={blur_size}")
         
     def occlusion(self, frame: Frame) -> np.ndarray:
         """
@@ -70,6 +81,8 @@ class DepthGradientOcclusion(OcclusionProvider):
         Returns:
             Binary mask indicating occluded areas (1 = occluded, 0 = not occluded)
         """
+        logger.log(Logger.DEBUG, f"Generating gradient-based occlusion mask for frame with timestamp {frame.timestamp}")
+        
         # Get depth image
         depth_image = frame.depth
         
@@ -77,7 +90,7 @@ class DepthGradientOcclusion(OcclusionProvider):
         normalized_depth = depth_image.astype(float) / 255.0
         
         # Apply Gaussian blur to reduce noise
-
+        logger.log(Logger.DEBUG, f"Applying Gaussian blur with sigma={self.blur_size/3}")
         blurred_depth = gaussian_filter(normalized_depth, sigma=self.blur_size/3)
         
         # Compute gradients
@@ -91,6 +104,13 @@ class DepthGradientOcclusion(OcclusionProvider):
         occlusion_mask = (gradient_magnitude > self.gradient_threshold).astype(np.uint8)
         
         # Dilate the mask to ensure complete coverage of object boundaries
+        logger.log(Logger.DEBUG, "Dilating occlusion mask")
         occlusion_mask = binary_dilation(occlusion_mask, iterations=2)
+        
+        # Log statistics about the mask
+        occluded_pixels = np.sum(occlusion_mask)
+        total_pixels = occlusion_mask.size
+        occluded_percentage = (occluded_pixels / total_pixels) * 100
+        logger.log(Logger.DEBUG, f"Gradient occlusion mask generated: {occluded_percentage:.2f}% of pixels occluded")
         
         return occlusion_mask.astype(np.uint8)
