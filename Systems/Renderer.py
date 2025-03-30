@@ -11,6 +11,7 @@ from pywavefront import visualization
 import pyassimp
 import pyassimp.postprocess
 from Interfaces.Frame import Frame
+from Systems.Logger import logger
 
 
 class Model3D:
@@ -63,7 +64,7 @@ class FbxModel(Model3D):
             file_path: Path to the FBX file
         """
         self.file_path = file_path
-        print(f"Loading FBX model from {file_path}")
+        logger.render(f"Loading FBX model from {file_path}")
         
         # Store vertices, faces, and materials for rendering
         self.vertices = []
@@ -96,15 +97,15 @@ class FbxModel(Model3D):
                     self.faces.append(faces)
                     self.materials.append(material_index)
                 
-                print(f"Loaded model with {len(self.vertices)} meshes")
+                logger.render(f"Loaded model with {len(self.vertices)} meshes")
         except Exception as e:
-            print(f"Error loading FBX model: {e}")
+            logger.error(f"Error loading FBX model: {e}")
             # Create a simple cube as fallback
             self._create_fallback_cube()
     
     def _create_fallback_cube(self):
         """Create a simple cube as fallback if model loading fails"""
-        print("Creating fallback cube model")
+        logger.warning("Creating fallback cube model")
         # Define the vertices of a cube
         vertices = [
             # Front face
@@ -318,7 +319,7 @@ class Renderer:
                 cr * cp * cy + sr * sp * sy   # w
             ])
             
-            print(f"Converted Euler angles ({rotation.get('x', 0)}, {rotation.get('y', 0)}, {rotation.get('z', 0)}) to quaternion: {quat}")
+            logger.debug(f"Converted Euler angles ({rotation.get('x', 0)}, {rotation.get('y', 0)}, {rotation.get('z', 0)}) to quaternion: {quat}")
         
         # Apply rotation
         rotation_matrix = quat.matrix33
@@ -378,26 +379,26 @@ class Renderer:
         gluLookAt(0, 0, 5, 0, 0, 0, 0, 1, 0)
         
         # Print debug info about models and scene data
-        print(f"Scene data contains {len(scene_data)} objects")
-        print(f"Models dictionary contains {len(models)} entries")
+        logger.debug(f"Scene data contains {len(scene_data)} objects")
+        logger.debug(f"Models dictionary contains {len(models)} entries")
         
         # Render each object in the scene
         for obj_id, obj_data in scene_data.items():
-            print(f"Processing object: {obj_id}")
+            logger.debug(f"Processing object: {obj_id}")
             
             if obj_id in models:
                 model_data = models[obj_id]
                 
                 if 'file_path' not in model_data:
-                    print(f"Warning: No file_path specified for model {obj_id}")
+                    logger.warning(f"No file_path specified for model {obj_id}")
                     continue
                     
                 model_path = model_data['file_path']
-                print(f"Loading model from: {model_path}")
+                logger.debug(f"Loading model from: {model_path}")
                 
                 # Check if file exists
                 if not os.path.exists(model_path):
-                    print(f"Warning: Model file does not exist: {model_path}")
+                    logger.warning(f"Model file does not exist: {model_path}")
                     
                     # Try different path variations
                     possible_paths = [
@@ -413,15 +414,15 @@ class Renderer:
                     
                     found = False
                     for alt_path in possible_paths:
-                        print(f"Trying alternative path: {alt_path}")
+                        logger.debug(f"Trying alternative path: {alt_path}")
                         if os.path.exists(alt_path):
-                            print(f"Found model at alternative path: {alt_path}")
+                            logger.debug(f"Found model at alternative path: {alt_path}")
                             model_path = alt_path
                             found = True
                             break
                     
                     if not found:
-                        print(f"Could not find model file: {os.path.basename(model_path)}")
+                        logger.error(f"Could not find model file: {os.path.basename(model_path)}")
                         continue
                 
                 try:
@@ -435,7 +436,7 @@ class Renderer:
                     if 'position' in obj_data and 'rotation' in obj_data:
                         self.apply_transform(obj_data['position'], obj_data['rotation'])
                     else:
-                        print(f"Warning: Missing position or rotation data for {obj_id}")
+                        logger.warning(f"Missing position or rotation data for {obj_id}")
                     
                     # Render model
                     model.render()
@@ -443,9 +444,9 @@ class Renderer:
                     # Pop matrix
                     glPopMatrix()
                 except Exception as e:
-                    print(f"Error rendering model {obj_id}: {e}")
+                    logger.error(f"Error rendering model {obj_id}: {e}")
             else:
-                print(f"Warning: Object {obj_id} specified in scene data but not found in models dictionary")
+                logger.warning(f"Object {obj_id} specified in scene data but not found in models dictionary")
         
         # Read pixels from framebuffer
         glReadBuffer(GL_COLOR_ATTACHMENT0)
@@ -465,13 +466,13 @@ class Renderer:
         # Convert occlusion mask to alpha channel (0 = fully occluded, 255 = not occluded)
         alpha_mask = np.zeros((height, width), dtype=np.uint8)
         
-        # Print dimensions for debugging
-        print(f"Frame dimensions: {frame.rgb.shape}")
-        print(f"Occlusion mask dimensions: {occlusion_mask.shape}")
+        # Log dimensions for debugging
+        logger.debug(f"Frame dimensions: {frame.rgb.shape}")
+        logger.debug(f"Occlusion mask dimensions: {occlusion_mask.shape}")
         
         # Resize occlusion mask to match frame dimensions if needed
         if occlusion_mask.shape[:2] != (height, width):
-            print(f"Resizing occlusion mask from {occlusion_mask.shape[:2]} to {(height, width)}")
+            logger.debug(f"Resizing occlusion mask from {occlusion_mask.shape[:2]} to {(height, width)}")
             # Use a simple resize approach for testing
             from PIL import Image
             if occlusion_mask.ndim == 2:
@@ -537,6 +538,7 @@ class Renderer:
         
         # Save image
         Image.fromarray(image).save(output_path)
+        logger.render(f"Saved rendered image to {output_path}")
         
         return output_path
     
@@ -564,7 +566,7 @@ class Renderer:
             # Get occlusion mask for this frame
             occlusion_mask = occlusion_masks.get(frame.timestamp)
             if occlusion_mask is None:
-                print(f"Warning: No occlusion mask found for timestamp {frame.timestamp}")
+                logger.warning(f"No occlusion mask found for timestamp {frame.timestamp}")
                 continue
                 
             # Render frame
