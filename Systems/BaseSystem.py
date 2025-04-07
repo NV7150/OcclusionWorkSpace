@@ -6,6 +6,7 @@ import glob
 from Systems.DataLoader import DataLoader
 from Systems.ModelLoader import ModelLoader
 from Systems.Renderer import Renderer
+from Systems.ContentsDepthCal import ContentsDepthCal
 from Logger import Logger, logger
 from Interfaces.OcclusionProvider import OcclusionProvider
 from Interfaces.Frame import Frame
@@ -58,6 +59,7 @@ class BaseSystem:
         self.data_loader = DataLoader(data_dirs)
         self.model_loader = ModelLoader(model_dirs)
         self.renderer = Renderer(output_dir)
+        self.contents_depth_cal = ContentsDepthCal(self.renderer)
         
         # Data storage
         self.frames = {}
@@ -82,10 +84,24 @@ class BaseSystem:
         Generate occlusion masks for all frames using the provided occlusion provider.
         """
         self.logger.log(Logger.SYSTEM, "Generating occlusion masks...")
+        
+        # Use the first scene for occlusion mask generation
+        if not self.scenes:
+            self.logger.log(Logger.ERROR, "No scenes loaded")
+            return
+            
+        scene_name = next(iter(self.scenes))
+        scene_data = self.scenes[scene_name]
+        
         for timestamp, frame in self.frames.items():
-            occlusion_mask = self.occlusion_provider.occlusion(frame)
+            # Calculate MR content depth
+            mr_depth = self.contents_depth_cal.calculate_depth(frame, self.models, scene_data)
+            
+            # Generate occlusion mask using both frame and MR depth
+            occlusion_mask = self.occlusion_provider.occlusion(frame, mr_depth)
             self.occlusion_masks[timestamp] = occlusion_mask
             self.logger.log(Logger.DEBUG, f"Generated mask for timestamp {timestamp}")
+        
         self.logger.log(Logger.SYSTEM, f"Generated {len(self.occlusion_masks)} occlusion masks")
         
     def render_frames(self, scene_name: Optional[str] = None):

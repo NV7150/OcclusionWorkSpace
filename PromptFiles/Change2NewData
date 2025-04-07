@@ -1,0 +1,19 @@
+I made a change in this Mixed Reality(MR) project:
+Previously, the OcclusionProvider interface only gets the frame data(includes imu, rgb, depth), but I added the new arg that is a depth frame of current MR scene.
+
+To implement this interface, I need a 3 new things:
+1. Systems/ContentsDepthCal.py
+    This calcurates the current depth map of MR contents.
+    Get the contents that trying to render in Systesms/Renderer.py.
+    The depth map is from only 3D object that trying to overlay in the camera scene.
+    Returns np.ndarray, that size is equal to Frame class's width and height trying to render on.
+2. Occlusions/SimpleOcclusion.py
+    Provide the occlusion map of simply judge from the real camera depth is front/beside of the contents.
+3. Load from depth
+    Current system loads the depth from png file, but it changed to csv.
+    Please adopt that.
+    The data example is in LocalData/TestDepth, and sample is in Example/depth_viewer.py.
+
+Please check the project first, and grasp the construction.
+You MUST NOT do more things than I specified, like fixing the bugs in other files.
+And please do a edit in 1 time in solo file not to waste my tokens.

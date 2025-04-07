@@ -35,7 +35,7 @@ def visualize_depth(file_path):
 
 if __name__ == "__main__":
     # Specify the directory containing the .csv files
-    data_directory = "LocalData/RecordedData 18/"
+    data_directory = "LocalData/TestDepth/"
 
     # Get a list of all .csv files in the directory
     csv_files = [f for f in os.listdir(data_directory) if f.endswith(".csv")]

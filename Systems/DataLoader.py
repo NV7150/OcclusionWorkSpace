@@ -41,7 +41,7 @@ class DataLoader:
             
             # Get RGB and depth image files
             rgb_files = glob.glob(os.path.join(data_dir, 'rgb_*.jpg')) + glob.glob(os.path.join(data_dir, 'rgb_*.png'))
-            depth_files = glob.glob(os.path.join(data_dir, 'depth_*.png'))
+            depth_files = glob.glob(os.path.join(data_dir, 'depth_*.csv'))
             
             # Sort files by timestamp
             rgb_files.sort()
@@ -65,9 +65,11 @@ class DataLoader:
                     print(f"Warning: No depth image found for timestamp {timestamp_str}")
                     continue
                 
-                # Load RGB and depth images
+                # Load RGB image
                 rgb_image = np.array(Image.open(rgb_file))
-                depth_image = np.array(Image.open(depth_file))
+                
+                # Load depth data from CSV
+                depth_image = self._load_depth_from_csv(depth_file)
                 
                 # Find closest IMU data
                 closest_imu_idx = self._find_closest_timestamp(float(timestamp_str), imu_data['timestamp'].values)
@@ -145,3 +147,40 @@ class DataLoader:
         """
         sorted_timestamps = sorted(self.frames.keys())
         return [self.frames[ts] for ts in sorted_timestamps]
+        
+    def _load_depth_from_csv(self, csv_file: str) -> np.ndarray:
+        """
+        Load depth data from a CSV file.
+        
+        Args:
+            csv_file: Path to the CSV file containing depth data
+            
+        Returns:
+            np.ndarray: Depth data as a numpy array
+        """
+        try:
+            depth_data = []
+            with open(csv_file, 'r') as csvfile:
+                import csv
+                csv_reader = csv.reader(csvfile)
+                for row in csv_reader:
+                    depth_data.append([float(x) for x in row])
+            
+            depth_array = np.array(depth_data, dtype=np.float32)
+            
+            # Convert to the same format as the previous PNG depth images
+            # Normalize to 0-255 range for compatibility with existing code
+            min_depth = np.min(depth_array)
+            max_depth = np.max(depth_array)
+            
+            # Avoid division by zero
+            if max_depth > min_depth:
+                depth_normalized = 255 * (depth_array - min_depth) / (max_depth - min_depth)
+            else:
+                depth_normalized = np.zeros_like(depth_array)
+                
+            return depth_normalized.astype(np.uint8)
+        except Exception as e:
+            print(f"Error loading depth from CSV {csv_file}: {e}")
+            # Return an empty array in case of error
+            return np.zeros((480, 640), dtype=np.uint8)  # Default size, can be adjusted

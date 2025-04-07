@@ -5,6 +5,7 @@ sys.path.append('..')
 from Systems.BaseSystem import BaseSystem
 from Logger import Logger, logger
 from Occlusions.DepthThresholdOcclusion import DepthThresholdOcclusion, DepthGradientOcclusion
+from Occlusions.SimpleOcclusion import SimpleOcclusion
 
 
 def main():
@@ -29,8 +30,10 @@ def main():
     
     # Define directories
     data_dirs = [
-        os.path.join('..', 'LocalData', 'DepthIMUData1', 'Fast2Slow'),
-        os.path.join('..', 'LocalData', 'DepthIMUData1', 'Slow'),
+        os.path.join('..', 'LocalData', 'TestDepth'),
+        # Uncomment below if you want to use the old data directories
+        # os.path.join('..', 'LocalData', 'DepthIMUData1', 'Fast2Slow'),
+        # os.path.join('..', 'LocalData', 'DepthIMUData1', 'Slow'),
     ]
     
     model_dirs = [
@@ -41,9 +44,15 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     # Create occlusion provider
-    # You can choose between DepthThresholdOcclusion and DepthGradientOcclusion
-    # or implement your own
-    occlusion_provider = DepthThresholdOcclusion(threshold=0.3)
+    # You can choose between different occlusion providers:
+    
+    # 1. SimpleOcclusion - New provider that compares real camera depth with MR content depth
+    occlusion_provider = SimpleOcclusion(max_depth=5.0)
+    
+    # 2. DepthThresholdOcclusion - Original provider that uses a threshold on depth
+    # occlusion_provider = DepthThresholdOcclusion(threshold=0.3)
+    
+    # 3. DepthGradientOcclusion - Original provider that uses depth gradients
     # occlusion_provider = DepthGradientOcclusion(gradient_threshold=0.05)
     
     # Create and run the system
@@ -61,6 +70,8 @@ def main():
     system.process()
     
     logger.log(Logger.SYSTEM, "Processing complete. Results saved to: " + output_dir)
+    logger.log(Logger.SYSTEM, "Note: This example now uses the new SimpleOcclusion provider that compares")
+    logger.log(Logger.SYSTEM, "      real camera depth with MR content depth from ContentsDepthCal.")
 
 
 if __name__ == '__main__':
