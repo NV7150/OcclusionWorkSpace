@@ -6,7 +6,8 @@ marker_file: the marker position json. format is like:
 {
     "{id}":{
         "pos": [{x}, {y}, {z}],
-        "norm": [{x}, {y}, {z}]
+        "norm": [{x}, {y}, {z}],
+        "tangent": [{x}, {y}, {z}]
     }
 }
 ```

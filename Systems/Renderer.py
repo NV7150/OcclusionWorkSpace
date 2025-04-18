@@ -289,8 +289,10 @@ class Renderer:
             rotation: Dictionary with x, y, z, w quaternion rotation values or x, y, z Euler angles
             scale: Optional dictionary with x, y, z scale values
         """
-        # Apply translation
-        glTranslatef(position['x'], position['y'], position['z'])
+        # Apply scale first if provided
+        if scale:
+            glScalef(scale.get('x', 1.0), scale.get('y', 1.0), scale.get('z', 1.0))
+            logger.log(Logger.DEBUG, f"Applied scale: ({scale.get('x', 1.0)}, {scale.get('y', 1.0)}, {scale.get('z', 1.0)})")
         
         # Check if rotation is specified as quaternion or Euler angles
         if 'w' in rotation:
@@ -328,10 +330,61 @@ class Renderer:
         rotation_matrix = quat.matrix33
         glMultMatrixf(pyrr.matrix44.create_from_matrix33(rotation_matrix))
         
-        # Apply scale if provided
-        if scale:
-            glScalef(scale.get('x', 1.0), scale.get('y', 1.0), scale.get('z', 1.0))
-            logger.log(Logger.DEBUG, f"Applied scale: ({scale.get('x', 1.0)}, {scale.get('y', 1.0)}, {scale.get('z', 1.0)})")
+        # Apply translation last
+        glTranslatef(position['x'], position['y'], position['z'])
+        
+    # def apply_transform(self, position: Dict[str, float], rotation: Dict[str, float], scale: Optional[Dict[str, float]] = None):
+    #     """
+    #     Apply a transform (position, rotation, and optional scale) to the current OpenGL matrix.
+        
+    #     Args:
+    #         position: Dictionary with x, y, z position values
+    #         rotation: Dictionary with x, y, z, w quaternion rotation values or x, y, z Euler angles
+    #         scale: Optional dictionary with x, y, z scale values
+    #     """
+    #     # Apply translation
+    #     glTranslatef(position['x'], position['y'], position['z'])
+        
+    #     # Check if rotation is specified as quaternion or Euler angles
+    #     if 'w' in rotation:
+    #         # It's a quaternion
+    #         quat = pyrr.Quaternion([rotation['x'], rotation['y'], rotation['z'], rotation['w']])
+    #     else:
+    #         # It's Euler angles (in degrees) - convert to quaternion
+    #         import math
+            
+    #         # Extract Euler angles in degrees
+    #         euler_x = math.radians(rotation.get('x', 0))
+    #         euler_y = math.radians(rotation.get('y', 0))
+    #         euler_z = math.radians(rotation.get('z', 0))
+            
+    #         # Calculate quaternion components
+    #         # This uses the ZYX rotation order (roll, pitch, yaw)
+    #         cy = math.cos(euler_z * 0.5)
+    #         sy = math.sin(euler_z * 0.5)
+    #         cp = math.cos(euler_y * 0.5)
+    #         sp = math.sin(euler_y * 0.5)
+    #         cr = math.cos(euler_x * 0.5)
+    #         sr = math.sin(euler_x * 0.5)
+            
+    #         # Create quaternion
+    #         quat = pyrr.Quaternion([
+    #             sr * cp * cy - cr * sp * sy,  # x
+    #             cr * sp * cy + sr * cp * sy,  # y
+    #             cr * cp * sy - sr * sp * cy,  # z
+    #             cr * cp * cy + sr * sp * sy   # w
+    #         ])
+            
+    #         logger.log(Logger.DEBUG, f"Converted Euler angles ({rotation.get('x', 0)}, {rotation.get('y', 0)}, {rotation.get('z', 0)}) to quaternion: {quat}")
+        
+    #     # Apply rotation
+    #     rotation_matrix = quat.matrix33
+    #     glMultMatrixf(pyrr.matrix44.create_from_matrix33(rotation_matrix))
+        
+    #     # Apply scale if provided
+    #     if scale:
+    #         glScalef(scale.get('x', 1.0), scale.get('y', 1.0), scale.get('z', 1.0))
+    #         logger.log(Logger.DEBUG, f"Applied scale: ({scale.get('x', 1.0)}, {scale.get('y', 1.0)}, {scale.get('z', 1.0)})")
         
     def render_frame(self, frame: Frame, occlusion_mask: np.ndarray,
                      models: Dict[str, Any], scene_data: Dict) -> np.ndarray:

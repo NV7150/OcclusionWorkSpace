@@ -17,7 +17,8 @@ class MarkerPositionLoader:
         {
             "{id}": {
                 "pos": [x, y, z],
-                "norm": [x, y, z]
+                "norm": [x, y, z],
+                "tangent": [x, y, z]
             }
         }
         
@@ -25,7 +26,7 @@ class MarkerPositionLoader:
             file_path: Path to the JSON file
             
         Returns:
-            Dictionary mapping marker IDs to their positions and normals
+            Dictionary mapping marker IDs to their positions, normals, and tangents
             
         Raises:
             FileNotFoundError: If the file does not exist
@@ -47,9 +48,9 @@ class MarkerPositionLoader:
         marker_positions = {}
         for marker_id, marker_data in data.items():
             # Validate the marker data structure
-            if "pos" not in marker_data or "norm" not in marker_data:
-                logger.log(Logger.ERROR, f"Marker {marker_id} is missing 'pos' or 'norm' data")
-                raise KeyError(f"Marker {marker_id} is missing 'pos' or 'norm' data")
+            if "pos" not in marker_data or "norm" not in marker_data or "tangent" not in marker_data:
+                logger.log(Logger.ERROR, f"Marker {marker_id} is missing 'pos', 'norm', or 'tangent' data")
+                raise KeyError(f"Marker {marker_id} is missing 'pos', 'norm', or 'tangent' data")
             
             # Convert string IDs to integers if they are numeric
             try:
@@ -57,18 +58,20 @@ class MarkerPositionLoader:
             except ValueError:
                 id_key = marker_id
             
-            # Convert position and normal to numpy arrays
+            # Convert position, normal, and tangent to numpy arrays
             try:
                 pos = np.array(marker_data["pos"], dtype=np.float32)
                 norm = np.array(marker_data["norm"], dtype=np.float32)
+                tangent = np.array(marker_data["tangent"], dtype=np.float32)
                 
-                if pos.shape != (3,) or norm.shape != (3,):
-                    logger.log(Logger.ERROR, f"Marker {marker_id} has invalid position or normal dimensions")
-                    raise ValueError(f"Marker {marker_id} has invalid position or normal dimensions")
+                if pos.shape != (3,) or norm.shape != (3,) or tangent.shape != (3,):
+                    logger.log(Logger.ERROR, f"Marker {marker_id} has invalid position, normal, or tangent dimensions")
+                    raise ValueError(f"Marker {marker_id} has invalid position, normal, or tangent dimensions")
                 
                 marker_positions[id_key] = {
                     "pos": pos,
-                    "norm": norm
+                    "norm": norm,
+                    "tangent": tangent
                 }
             except (TypeError, ValueError) as e:
                 logger.log(Logger.ERROR, f"Invalid position or normal data for marker {marker_id}: {e}")
@@ -95,7 +98,8 @@ class MarkerPositionLoader:
             for marker_id, marker_data in marker_positions.items():
                 output_data[str(marker_id)] = {
                     "pos": marker_data["pos"].tolist(),
-                    "norm": marker_data["norm"].tolist()
+                    "norm": marker_data["norm"].tolist(),
+                    "tangent": marker_data["tangent"].tolist()
                 }
             
             # Create directory if it doesn't exist

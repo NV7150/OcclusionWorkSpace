@@ -1,0 +1,29 @@
+In this system, I'm working on occlusion in MR. 
+Please refer BaseSsytem.md and PromptFiles/parameters first, and grasp the project.
+
+For debugging, I want to grasp the MR scene.
+To do this, I want to implement "visualize mode" in this BaseSystem.
+I have a scene 3D scan .fbx file (example is LocalData/SceneModel/on_the_desk.fbx), so please set this model in the origin of the OpenGL visualization.
+
+On the scene model, please render the following information of the scene:
+- Refernence markers
+    - The markers that using for tracking.
+    - Load the marker json file (refer the parameters) and visualize the marker position with plane, norm/tangent vector with arrow.
+- Camera positions
+    - Estimate camera position/rotation with ApriltagTracker.py of all frames, and render the view fustrums of each frames.
+    - Please load the frames like Example/TrakcerExample.py.
+- MR Contents
+    - Load the Scene json file and contents .fbx file, and put the MR contents in the 3D scan scene.
+
+
+So you should make "VisualizeSystem.py" and "VisualizeModelRender.py" in Systems folder to do this, and create "VisualizeExample" in the Example folder.
+
+Please make the visualization system that can I explore the the scene in mouse or keyboard.
+
+In development, please make sure following:
+- Minimize the token, DO NOT make multiple changes in solo file.
+- DO NOT use any default values or mock. Please ask me if you find anything I've not defined.
+- If you want add files more than I specified, please ask me.
+- Make it readable and simple.
+- If you have any questions of this project or task, please feel free to ask me.
+

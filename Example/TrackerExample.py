@@ -29,7 +29,7 @@ marker_file = os.path.join('..', 'LocalData', 'DepthIMUData2', 'Env_3DModels', '
 render_obj_dir = os.path.join('..', 'LocalData', 'Models', 'Scene1')
 
 # Output directory for rendered results
-output_dir = os.path.join('..', 'Output', 'tracker_example6')
+output_dir = os.path.join('..', 'Output', 'tracker_example7')
 
 # Output file prefix
 output_prefix = 'tracked_frame'
@@ -189,18 +189,8 @@ def main():
     tracker = ApriltagTracker(
         camera_matrix=camera_matrix,
         dist_coeffs=dist_coeffs,
-        tag_size=tag_size
-    )
-    
-    # Override the default tag family in the detector
-    tracker.detector = apriltags.Detector(
-        families=tag_family,
-        nthreads=1,
-        quad_decimate=1.0,
-        quad_sigma=0.0,
-        refine_edges=1,
-        decode_sharpening=0.25,
-        debug=0
+        tag_size=tag_size,
+        tag_family=tag_family
     )
     
     logger.log(Logger.SYSTEM, f"Initialized AprilTag detector with family: {tag_family}")

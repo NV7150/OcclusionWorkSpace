@@ -1,0 +1,13 @@
+In marker_poses.json. there is a tangent, but ApriltagTracker do not use it and insted it creates a selfsh x-axis like this:
+            # Choose an arbitrary vector not parallel to z_axis for creating x_axis
+            if abs(np.dot(z_axis, [1, 0, 0])) < 0.9:
+                temp = np.array([1, 0, 0])
+            else:
+                temp = np.array([0, 1, 0])
+            
+            # Create orthogonal x and y axes
+            x_axis = np.cross(temp, z_axis)
+            x_axis = x_axis / np.linalg.norm(x_axis)
+            y_axis = np.cross(z_axis, x_axis)
+
+so please make it use tangent

@@ -13,7 +13,7 @@ class ApriltagTracker(Tracker):
     and calculate the camera pose based on the detected tags and their known positions.
     """
     
-    def __init__(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray = None, tag_size: float = 0.05):
+    def __init__(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray = None, tag_size: float = 0.05, tag_family: str = 'tag36h11'):
         """
         Initialize the AprilTag tracker.
         
@@ -28,7 +28,7 @@ class ApriltagTracker(Tracker):
         
         # Initialize the AprilTag detector
         self.detector = apriltags.Detector(
-            families='tag36h11',  # Default tag family
+            families=tag_family,  # Default tag family
             nthreads=1,           # Number of threads
             quad_decimate=1.0,    # Image decimation factor
             quad_sigma=0.0,       # Gaussian blur sigma
@@ -69,7 +69,8 @@ class ApriltagTracker(Tracker):
         {
             "{id}": {
                 "pos": [x, y, z],
-                "norm": [x, y, z]
+                "norm": [x, y, z],
+                "tangent": [x, y, z]
             }
         }
         
@@ -119,6 +120,7 @@ class ApriltagTracker(Tracker):
             # Get the marker position in world coordinates
             marker_pos = self.marker_positions[tag_id]["pos"]
             marker_norm = self.marker_positions[tag_id]["norm"]
+            marker_tangent = self.marker_positions[tag_id]["tangent"]
             
             # Calculate the corners of the tag in 3D space
             # We need to define the tag corners relative to the tag center
@@ -127,14 +129,21 @@ class ApriltagTracker(Tracker):
             # First, create a coordinate system where Z is aligned with the normal
             z_axis = marker_norm / np.linalg.norm(marker_norm)
             
-            # Choose an arbitrary vector not parallel to z_axis for creating x_axis
-            if abs(np.dot(z_axis, [1, 0, 0])) < 0.9:
-                temp = np.array([1, 0, 0])
+            # Use the provided tangent for x-axis
+            # Make sure tangent is not parallel to z_axis
+            if abs(np.dot(z_axis, marker_tangent)) > 0.99:
+                logger.log(Logger.WARNING, f"Tangent for tag {tag_id} is nearly parallel to normal, using arbitrary vector")
+                # Fall back to arbitrary vector method
+                if abs(np.dot(z_axis, [1, 0, 0])) < 0.9:
+                    temp = np.array([1, 0, 0])
+                else:
+                    temp = np.array([0, 1, 0])
+                x_axis = np.cross(temp, z_axis)
             else:
-                temp = np.array([0, 1, 0])
+                # Project tangent onto the plane perpendicular to z_axis
+                x_axis = marker_tangent - np.dot(marker_tangent, z_axis) * z_axis
             
-            # Create orthogonal x and y axes
-            x_axis = np.cross(temp, z_axis)
+            # Normalize x_axis and create y_axis
             x_axis = x_axis / np.linalg.norm(x_axis)
             y_axis = np.cross(z_axis, x_axis)
             
