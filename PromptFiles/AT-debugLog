@@ -1,0 +1,413 @@
+(.venv) dang0@oasis:~/develop/OcclusionWorkSpace/Example$ python TrackerExample.py 
+Enter log options (comma-separated, leave empty for default) > 
+[system] Using default log keys: system, debug, error
+[system] Initializing BaseSystem with 1 data directories and 1 model directories
+[system] Output directory: ../Output/tracker_example2
+[system] Loaded camera matrix from ../LocalData/camera_ipadpro.csv
+[system] Initialized AprilTag detector with family: tagStandard41h12
+[debug] Loaded 3 marker positions from ../LocalData/DepthIMUData2/Env_3DModels/marker_poses-debug.json
+[debug] Loaded 3 marker positions from ../LocalData/DepthIMUData2/Env_3DModels/marker_poses-debug.json
+[system] Successfully initialized AprilTag tracker with marker positions from ../LocalData/DepthIMUData2/Env_3DModels/marker_poses-debug.json
+[system] Loading frames...
+[system] Loaded 20 frames
+[system] Loading models and scenes...
+[system] Loaded 1 models and 1 scenes
+[system] Processing frames with AprilTag tracker...
+[debug] Camera pose:
+[[ 0.74065712 -0.19938384  0.64161757 -0.79057174]
+ [ 0.6582503   0.02393812 -0.75241844  1.18655907]
+ [ 0.13466096  0.97962904  0.14897441 -0.9530461 ]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.73504703 -0.20632806  0.64585958 -0.78923259]
+ [ 0.66475696  0.03184512 -0.74638065  1.18611116]
+ [ 0.1334318   0.97796453  0.16056567 -0.95459175]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.7337593  -0.20414538  0.64801385 -0.78876794]
+ [ 0.66653962  0.03153337 -0.74480238  1.18697641]
+ [ 0.13161391  0.97843258  0.15920889 -0.95381476]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.73240549 -0.20352939  0.64973686 -0.78873846]
+ [ 0.66842249  0.03330519 -0.74303576  1.18685108]
+ [ 0.12959     0.9785022   0.16043652 -0.95406699]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.73240549 -0.20352939  0.64973686 -0.78873846]
+ [ 0.66842249  0.03330519 -0.74303576  1.18685108]
+ [ 0.12959     0.9785022   0.16043652 -0.95406699]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.73240549 -0.20352939  0.64973686 -0.78873846]
+ [ 0.66842249  0.03330519 -0.74303576  1.18685108]
+ [ 0.12959     0.9785022   0.16043652 -0.95406699]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.73240549 -0.20352939  0.64973686 -0.78873846]
+ [ 0.66842249  0.03330519 -0.74303576  1.18685108]
+ [ 0.12959     0.9785022   0.16043652 -0.95406699]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.73240549 -0.20352939  0.64973686 -0.78873846]
+ [ 0.66842249  0.03330519 -0.74303576  1.18685108]
+ [ 0.12959     0.9785022   0.16043652 -0.95406699]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.73240549 -0.20352939  0.64973686 -0.78873846]
+ [ 0.66842249  0.03330519 -0.74303576  1.18685108]
+ [ 0.12959     0.9785022   0.16043652 -0.95406699]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.73240549 -0.20352939  0.64973686 -0.78873846]
+ [ 0.66842249  0.03330519 -0.74303576  1.18685108]
+ [ 0.12959     0.9785022   0.16043652 -0.95406699]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.85191319 -0.20200338  0.48315479 -0.75938149]
+ [ 0.51955714  0.21043987 -0.82811559  1.20363791]
+ [ 0.06560712  0.95650912  0.2842288  -1.08431428]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.85191319 -0.20200338  0.48315479 -0.75938149]
+ [ 0.51955714  0.21043987 -0.82811559  1.20363791]
+ [ 0.06560712  0.95650912  0.2842288  -1.08431428]
+ [ 0.          0.          0.          1.        ]]
+[debug] No AprilTags detected in frame
+[debug] Camera pose:
+[[ 0.85191319 -0.20200338  0.48315479 -0.75938149]
+ [ 0.51955714  0.21043987 -0.82811559  1.20363791]
+ [ 0.06560712  0.95650912  0.2842288  -1.08431428]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.95695609 -0.17165132  0.23403174 -0.72256991]
+ [ 0.27983322  0.33176984 -0.90090074  1.29809357]
+ [ 0.07699613  0.92761231  0.36552291 -1.18283409]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.80278989 -0.21185012  0.55735798 -0.78403714]
+ [ 0.58160888  0.07226353 -0.81025249  1.16304232]
+ [ 0.13137543  0.97462686  0.18122634 -0.95184477]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.81880507 -0.19876253  0.5385645  -0.60813087]
+ [ 0.5463571   0.55778374 -0.62479694  1.35598053]
+ [-0.1762163   0.80583544  0.56531147 -1.47419953]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[-0.99318558  0.082956   -0.08185783  0.25346177]
+ [ 0.11652167  0.72043477 -0.68366399 -0.80526013]
+ [ 0.00225919 -0.68854342 -0.72519159 -1.74755288]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.73237513 -0.22854032  0.64140158 -0.78064819]
+ [ 0.67104996  0.08260249 -0.73679629  1.17429592]
+ [ 0.11540629  0.97002379  0.21385798 -0.95453354]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.95297244 -0.16694644  0.25292767 -0.61034059]
+ [ 0.30253577  0.57299119 -0.76167788  1.3557909 ]
+ [-0.01776592  0.8023777   0.59655209 -1.46580272]
+ [ 0.          0.          0.          1.        ]]
+[debug] Camera pose:
+[[ 0.66935218  0.16378567 -0.72466676  0.57959051]
+ [ 0.74288851 -0.13549525  0.65555907 -0.49595689]
+ [ 0.00918228 -0.97714651 -0.21236853 -0.84903788]
+ [ 0.          0.          0.          1.        ]]
+[system] Generating occlusion masks...
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:43.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 19.72% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:43.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:44.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 19.24% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:44.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:45.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 19.25% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:45.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:46.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 19.36% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:46.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:47.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 30.31% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:47.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:48.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 95.70% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:48.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:49.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 68.54% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:49.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:50.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 92.85% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:50.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:51.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 91.55% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:51.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:52.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 88.79% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:52.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:53.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 19.83% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:53.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:54.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 25.85% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:54.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:55.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 59.52% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:55.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:56.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 20.00% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:56.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:57.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 20.51% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:57.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:58.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 20.91% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:58.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:47:59.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 23.17% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:47:59.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:48:00.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 19.09% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:48:00.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:48:01.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 20.02% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:48:01.000000
+[debug] Calculating depth map for MR contents
+[debug] Depth map calculation complete. Shape: (1440, 1920)
+[debug] Generating simple occlusion mask for frame with timestamp 2025-04-09T17:48:02.000000
+[debug] Resizing MR depth from (1440, 1920) to (192, 256)
+[debug] Simple occlusion mask generated: 18.92% of pixels occluded
+[debug] Generated mask for timestamp 2025-04-09T17:48:02.000000
+[system] Generated 20 occlusion masks
+[system] No scene specified, using first scene: 'Scene1'
+[system] Rendering frames with scene 'Scene1'...
+[debug] Rendering 20 frames
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[debug] Scene data contains 1 objects
+[debug] Models dictionary contains 1 entries
+[debug] Processing object: Glass
+[debug] Loading model from: ../LocalData/Models/Scene1/Glass.fbx
+[debug] Converted Euler angles (90, 0, 0) to quaternion: [0.70710678 0.         0.         0.70710678]
+[debug] Frame dimensions: (1440, 1920, 3)
+[debug] Occlusion mask dimensions: (192, 256)
+[debug] Resizing occlusion mask from (192, 256) to (1440, 1920)
+[system] Rendered 20 frames
+[system] Output saved to ../Output/tracker_example2
+[system] Processing complete. Results saved to: ../Output/tracker_example2
+[system] Note: This example demonstrates the use of AprilTag tracking
+[system]       for camera pose estimation in the occlusion framework.

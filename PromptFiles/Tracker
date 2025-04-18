@@ -1,0 +1,24 @@
+This MR system is not adopt to tracking.
+So I want you to do to do the task below:
+
+1. Basic tracker adoption
+In Interfaces/Track.py there is a interface class of Tracker. Please Leverage the tracker interface in the BaseSystem/Renderer.py.
+
+2. Implement Apriltag tracking
+Extending Tracker, please wirte a Tracker/ApriltagTracker.py that calicurates camera pose with pupil-apriltags. 
+The tracker gets the grand-truth marker position from json file. The information should be pass in initialize() method.
+
+3. Implement json loader
+For ApriltagTracker.py, please implement the json loader. The json is like this:
+```
+{
+    "{id}":{
+        "pos": [{x}, {y}, {z}],
+        "norm": [{x}, {y}, {z}]
+    }
+}
+```
+And the example is in LocalData/qr_pos.json. Please refer that.
+Please check the project first, and grasp the construction.
+You MUST NOT do more things than I specified, like fixing the bugs in other files.
+And please do a edit in 1 time in solo file not to waste my tokens.

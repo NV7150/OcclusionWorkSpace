@@ -12,41 +12,31 @@ The system consists of several key components that work together:
 
 1. **Frame** - Data container for camera frames
 2. **OcclusionProvider** - Interface for occlusion mask generation
-3. **ContentsDepthCal** - Calculator for MR content depth maps
-4. **DataLoader** - Loader for camera frames and depth data
-5. **BaseSystem** - Main coordinator for the occlusion framework
-6. **Renderer** - Renderer for MR scenes
+3. **Tracker** - Interface for camera pose tracking
+4. **ContentsDepthCal** - Calculator for MR content depth maps
+5. **DataLoader** - Loader for camera frames and depth data
+6. **BaseSystem** - Main coordinator for the occlusion framework
+7. **Renderer** - Renderer for MR scenes
 
 ### Component Relationships
 
-```
-                  +----------------+
-                  |   BaseSystem   |
-                  +----------------+
-                          |
-                          | coordinates
-                          v
-    +----------+    +------------+    +-------------+
-    | Renderer |<-->|ContentsDepthCal|    |DataLoader|
-    +----------+    +------------+    +-------------+
-         |                 |                 |
-         | renders         | calculates      | loads
-         v                 v                 v
-    +---------+    +----------------+    +-------+
-    | Models  |    | MR Depth Maps  |    | Frame |
-    +---------+    +----------------+    +-------+
-                          |                 |
-                          |                 |
-                          v                 v
-                  +------------------+
-                  |OcclusionProvider |
-                  +------------------+
-                          |
-                          | generates
-                          v
-                  +------------------+
-                  | Occlusion Masks  |
-                  +------------------+
+```mermaid
+flowchart TD
+    BaseSystem["BaseSystem"] --> |coordinates| ContentsDepthCal["ContentsDepthCal"]
+    BaseSystem --> |coordinates| Renderer["Renderer"]
+    BaseSystem --> |coordinates| DataLoader["DataLoader"]
+    
+    Renderer <--> ContentsDepthCal
+    Renderer --> |renders| Models["Models"]
+    ContentsDepthCal --> |calculates| MRDepth["MR Depth Maps"]
+    DataLoader --> |loads| Frame["Frame"]
+    
+    Tracker["Tracker"] --> Models
+    Frame --> Tracker
+    
+    Tracker --> OcclusionProvider["OcclusionProvider"]
+    Frame --> OcclusionProvider
+    OcclusionProvider --> |generates| OcclusionMasks["Occlusion Masks"]
 ```
 
 ## Detailed Component Descriptions
@@ -81,6 +71,26 @@ Implementations include:
 - **SimpleOcclusion** - Compares real camera depth with MR content depth
 - **DepthThresholdOcclusion** - Uses a threshold on depth values
 - **DepthGradientOcclusion** - Uses depth gradients to detect object boundaries
+### 3. Tracker (Interfaces/Tracker.py)
+
+The Tracker is an abstract interface that defines the method for tracking camera pose:
+
+```python
+class Tracker(metaclass=ABCMeta):
+    @abstractmethod
+    def track(self, frame: Frame) -> np.ndarray:
+        # Track camera pose and return transformation matrix
+        pass
+```
+
+Key features:
+- Returns a 4x4 transformation matrix representing the camera pose
+- The matrix represents the camera pose in the world coordinate system
+- The matrix format is [R|t] where R is the rotation matrix and t is the translation vector
+
+Implementations include:
+- **ApriltagTracker** - Uses AprilTag markers for camera pose estimation
+
 
 ### 3. ContentsDepthCal (Systems/ContentsDepthCal.py)
 
@@ -156,6 +166,49 @@ Key features:
 - Setting up OpenGL for rendering
 - Applying transforms to models
 - Rendering models with occlusion masks
+### 7. ApriltagTracker (Tracker/ApriltagTracker.py)
+
+The ApriltagTracker class implements the Tracker interface using AprilTag markers:
+
+```python
+class ApriltagTracker(Tracker):
+    def __init__(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray = None, tag_size: float = 0.05):
+        # Initialize with camera parameters
+        
+    def initialize(self, marker_positions_file: str) -> bool:
+        # Initialize with marker positions from JSON file
+        
+    def track(self, frame: Frame) -> np.ndarray:
+        # Detect AprilTags and calculate camera pose
+```
+
+Key features:
+- Uses pupil-apriltags library for AprilTag detection
+- Loads marker positions from a JSON file
+- Calculates camera pose using OpenCV's solvePnP
+- Falls back to the last valid pose when no tags are detected
+
+### 8. MarkerPositionLoader (Utils/MarkerPositionLoader.py)
+
+The MarkerPositionLoader is a utility class for loading marker position data:
+
+```python
+class MarkerPositionLoader:
+    @staticmethod
+    def load_marker_positions(file_path: str) -> Dict[Union[str, int], Dict[str, np.ndarray]]:
+        # Load marker positions from JSON file
+        
+    @staticmethod
+    def save_marker_positions(marker_positions: Dict[Union[str, int], Dict[str, np.ndarray]], file_path: str) -> bool:
+        # Save marker positions to JSON file
+```
+
+Key features:
+- Loads marker positions and normals from JSON files
+- Validates marker data structure and dimensions
+- Converts string IDs to integers when possible
+- Provides error handling and logging
+
 
 ## Data Flow
 
@@ -193,13 +246,25 @@ class MyCustomOcclusion(OcclusionProvider):
 ```
 
 ### Using the System
-
 ```python
 from Systems.BaseSystem import BaseSystem
 from Occlusions.SimpleOcclusion import SimpleOcclusion
+from Tracker.ApriltagTracker import ApriltagTracker
+import numpy as np
 
 # Create occlusion provider
 occlusion_provider = SimpleOcclusion(max_depth=5.0)
+
+# Create camera matrix for tracker
+camera_matrix = np.array([
+    [fx, 0, cx],
+    [0, fy, cy],
+    [0, 0, 1]
+], dtype=np.float32)
+
+# Create and initialize tracker
+tracker = ApriltagTracker(camera_matrix)
+tracker.initialize("LocalData/qr_pos.json")
 
 # Create and run the system
 system = BaseSystem(
@@ -207,11 +272,37 @@ system = BaseSystem(
     model_dirs=["path/to/models"],
     output_dir="path/to/output",
     output_prefix="frame",
-    occlusion_provider=occlusion_provider
+    occlusion_provider=occlusion_provider,
+    tracker=tracker  # Pass the tracker to the system
 )
 
 # Process all data
 system.process()
+```
+
+### Using the Tracker Independently
+
+```python
+from Tracker.ApriltagTracker import ApriltagTracker
+from Utils.MarkerPositionLoader import MarkerPositionLoader
+import numpy as np
+import cv2
+
+# Create camera matrix
+camera_matrix = np.array([
+    [fx, 0, cx],
+    [0, fy, cy],
+    [0, 0, 1]
+], dtype=np.float32)
+
+# Initialize tracker
+tracker = ApriltagTracker(camera_matrix)
+tracker.initialize("LocalData/qr_pos.json")
+
+# Use with a frame
+camera_pose = tracker.track(frame)
+print(f"Camera position: {camera_pose[:3, 3]}")
+```
 ```
 
 ## Future Implementation Considerations
@@ -228,8 +319,13 @@ system.process()
    - Add support for real-time camera input
    - Integrate with AR/VR frameworks
 
-4. **Extensibility**:
-   - Create a plugin system for custom occlusion providers
+4. **Tracking Improvements**:
+   - Implement sensor fusion for more robust tracking
+   - Add support for markerless tracking using SLAM
+   - Implement Kalman filtering for smoother camera pose estimation
+
+5. **Extensibility**:
+   - Create a plugin system for custom occlusion providers and trackers
    - Support for different rendering backends
 
 ## Conclusion

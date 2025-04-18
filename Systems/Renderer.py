@@ -193,16 +193,18 @@ class Renderer:
     occlusion masks and scene descriptions.
     """
     
-    def __init__(self, output_dir: str):
+    def __init__(self, output_dir: str, tracker=None):
         """
-        Initialize the Renderer with an output directory.
+        Initialize the Renderer with an output directory and optional tracker.
         
         Args:
             output_dir: Directory path where rendered images will be saved
+            tracker: Optional Tracker object for camera pose estimation
         """
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
         self.models_cache = {}  # Cache for loaded models
+        self.tracker = tracker  # Store the tracker
         self.initialize_opengl()
         
     def initialize_opengl(self):
@@ -278,13 +280,14 @@ class Renderer:
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         
-    def apply_transform(self, position: Dict[str, float], rotation: Dict[str, float]):
+    def apply_transform(self, position: Dict[str, float], rotation: Dict[str, float], scale: Optional[Dict[str, float]] = None):
         """
-        Apply a transform (position and rotation) to the current OpenGL matrix.
+        Apply a transform (position, rotation, and optional scale) to the current OpenGL matrix.
         
         Args:
             position: Dictionary with x, y, z position values
             rotation: Dictionary with x, y, z, w quaternion rotation values or x, y, z Euler angles
+            scale: Optional dictionary with x, y, z scale values
         """
         # Apply translation
         glTranslatef(position['x'], position['y'], position['z'])
@@ -324,6 +327,11 @@ class Renderer:
         # Apply rotation
         rotation_matrix = quat.matrix33
         glMultMatrixf(pyrr.matrix44.create_from_matrix33(rotation_matrix))
+        
+        # Apply scale if provided
+        if scale:
+            glScalef(scale.get('x', 1.0), scale.get('y', 1.0), scale.get('z', 1.0))
+            logger.log(Logger.DEBUG, f"Applied scale: ({scale.get('x', 1.0)}, {scale.get('y', 1.0)}, {scale.get('z', 1.0)})")
         
     def render_frame(self, frame: Frame, occlusion_mask: np.ndarray,
                      models: Dict[str, Any], scene_data: Dict) -> np.ndarray:
@@ -374,9 +382,20 @@ class Renderer:
         glClearColor(0.0, 0.0, 0.0, 0.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        # Set up camera position (identity for now, can be adjusted based on frame data)
+        # Set up camera position using tracker if available
         glLoadIdentity()
-        gluLookAt(0, 0, 5, 0, 0, 0, 0, 1, 0)
+        
+        if self.tracker:
+            # Get camera pose from tracker
+            camera_pose = self.tracker.track(frame)
+            
+            # Apply camera pose matrix directly
+            # OpenGL uses column-major order, so we need to transpose the matrix
+            camera_pose_gl = camera_pose.T.flatten()
+            glLoadMatrixf(camera_pose_gl)
+        else:
+            # Fallback to default camera position if no tracker is available
+            gluLookAt(0, 0, 5, 0, 0, 0, 0, 1, 0)
         
         # Print debug info about models and scene data
         logger.log(Logger.DEBUG, f"Scene data contains {len(scene_data)} objects")
@@ -434,7 +453,9 @@ class Renderer:
                     
                     # Apply object transform
                     if 'position' in obj_data and 'rotation' in obj_data:
-                        self.apply_transform(obj_data['position'], obj_data['rotation'])
+                        # Check if scale is provided
+                        scale = obj_data.get('scale')
+                        self.apply_transform(obj_data['position'], obj_data['rotation'], scale)
                     else:
                         logger.log(Logger.WARNING, f"Missing position or rotation data for {obj_id}")
                     

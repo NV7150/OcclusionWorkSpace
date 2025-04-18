@@ -101,14 +101,14 @@ class ModelLoader:
     
     def get_object_transform(self, scene_name: str, object_id: str) -> Optional[Dict]:
         """
-        Get the transform (position, rotation) of an object in a scene.
+        Get the transform (position, rotation, scale) of an object in a scene.
         
         Args:
             scene_name: Name of the scene
             object_id: ID of the object
             
         Returns:
-            Dictionary containing position and rotation or None if not found
+            Dictionary containing position, rotation, and scale (if available) or None if not found
         """
         scene = self.scenes.get(scene_name)
         if not scene:
@@ -121,8 +121,15 @@ class ModelLoader:
         position = object_data.get('position', {'x': 0, 'y': 0, 'z': 0})
         rotation = object_data.get('rotation', {'x': 0, 'y': 0, 'z': 0, 'w': 1})
         
-        # Pass the rotation data as is - Renderer will handle the conversion
-        return {
+        # Create transform dictionary with position and rotation
+        transform = {
             'position': position,
             'rotation': rotation
         }
+        
+        # Add scale if it exists in the object data
+        if 'scale' in object_data:
+            transform['scale'] = object_data['scale']
+            logger.log(Logger.MODEL, f"Loaded scale for {object_id}: {object_data['scale']}")
+        
+        return transform

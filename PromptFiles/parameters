@@ -1,0 +1,26 @@
+frames_dir: the directory path that have the image files to render
+    - this file has frame_{timestamp}.{jpg|png}, depth_{timestamp}.{jpg|png}
+imu_file: the csv file representing IMU data (default: {Frames}/imu.csv)
+marker_file: the marker position json. format is like:
+```
+{
+    "{id}":{
+        "pos": [{x}, {y}, {z}],
+        "norm": [{x}, {y}, {z}]
+    }
+}
+```
+render_obj_dir: the directory path for overlay in the MR scene.
+- the directory has multiple files of {id}.fbx for rendering object
+- solo {SceneName}.json for the position/rotation of the objects. format is like:
+```
+{
+    "(id)": {
+        "position": {"x": x, "y": y, "z": z},
+        "rotation": {"x": x, "y": y, "z": z}, // rotation is in Eular
+    },
+    ....
+}
+```
+
+camera_matrix: the csv file of cameara matrix.

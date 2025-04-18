@@ -18,15 +18,16 @@ class BaseSystem:
     It coordinates data loading, occlusion mask generation, and rendering.
     """
     
-    def __init__(self, 
-                 data_dirs: List[str], 
-                 model_dirs: List[str], 
+    def __init__(self,
+                 data_dirs: List[str],
+                 model_dirs: List[str],
                  output_dir: str,
                  output_prefix: str,
                  occlusion_provider: OcclusionProvider,
                  log_keys: Optional[List[str]] = None,
                  log_to_file: bool = False,
-                 log_file_path: Optional[str] = None
+                 log_file_path: Optional[str] = None,
+                 tracker: Optional[Any] = None
                  ):
         """
         Initialize the BaseSystem with directories and an occlusion provider.
@@ -58,7 +59,7 @@ class BaseSystem:
         # Initialize components
         self.data_loader = DataLoader(data_dirs)
         self.model_loader = ModelLoader(model_dirs)
-        self.renderer = Renderer(output_dir)
+        self.renderer = Renderer(output_dir, tracker)
         self.contents_depth_cal = ContentsDepthCal(self.renderer)
         
         # Data storage
