@@ -1,0 +1,12 @@
+For the debug, I want to add "OpenCV Coordinate Mode" In VisualizeModelRenderer. It uses the coordinate system of OpenCV, that is Y-down, Z-forward, right-handed coordinate system.
+To do this, please add "cv_coordinate" bool param in initalize method parameter, and if it is specified, please treat every coordinate as CV coordinate.
+
+Please read VisualizeSystem.md and PromptFiles/VisualizeSystem to grap what the visualize system is.
+
+In development, please make sure following:
+- Minimize the token, DO NOT make multiple changes in solo file.
+- DO NOT use any default values or mock. Please ask me if you find anything I've not defined.
+- If you want add files more than I specified, please ask me.
+- Make it readable and simple.
+- If you have any questions of this project or task, please feel free to ask me.
+

@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple, Union
 import pyrr
 from OpenGL.GL import *
@@ -363,6 +364,60 @@ class VisualizeModelRender:
         
         glPopMatrix()
     
+    # def _draw_markers(self):
+    #     """
+    #     Draw the reference markers.
+    #     """
+    #     for marker_id, marker_data in self.marker_positions.items():
+    #         pos = marker_data["pos"]
+    #         norm = marker_data["norm"]
+    #         tangent = marker_data["tangent"]
+            
+    #         glPushMatrix()
+            
+    #         # Translate to marker position
+    #         glTranslatef(pos[0], pos[1], pos[2])
+            
+    #         # Draw marker as a small cube
+    #         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.0, 1.0])
+    #         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1.0, 1.0, 0.0, 1.0])
+    #         glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
+    #         glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
+            
+    #         # Draw a cube for the marker
+    #         glutSolidCube(0.05)
+            
+    #         # Draw normal vector as an arrow
+    #         glDisable(GL_LIGHTING)
+    #         glLineWidth(2.0)
+            
+    #         # Normal vector (blue)
+    #         glColor3f(0.0, 0.0, 1.0)
+    #         glBegin(GL_LINES)
+    #         glVertex3f(0.0, 0.0, 0.0)
+    #         glVertex3f(norm[0] * 0.2, norm[1] * 0.2, norm[2] * 0.2)
+    #         glEnd()
+            
+    #         # Tangent vector (red)
+    #         glColor3f(1.0, 0.0, 0.0)
+    #         glBegin(GL_LINES)
+    #         glVertex3f(0.0, 0.0, 0.0)
+    #         glVertex3f(tangent[0] * 0.2, tangent[1] * 0.2, tangent[2] * 0.2)
+    #         glEnd()
+            
+    #         # Calculate bitangent (cross product of normal and tangent)
+    #         bitangent = np.cross(norm, tangent)
+            
+    #         # Bitangent vector (green)
+    #         glColor3f(0.0, 1.0, 0.0)
+    #         glBegin(GL_LINES)
+    #         glVertex3f(0.0, 0.0, 0.0)
+    #         glVertex3f(bitangent[0] * 0.2, bitangent[1] * 0.2, bitangent[2] * 0.2)
+    #         glEnd()
+            
+    #         glEnable(GL_LIGHTING)
+            
+    #         glPopMatrix()
     def _draw_markers(self):
         """
         Draw the reference markers.
@@ -386,62 +441,221 @@ class VisualizeModelRender:
             # Draw a cube for the marker
             glutSolidCube(0.05)
             
-            # Draw normal vector as an arrow
+            # Draw coordinate vectors
             glDisable(GL_LIGHTING)
             glLineWidth(2.0)
             
-            # Normal vector (blue)
+            # Disable depth testing to ensure all lines are visible
+            glDisable(GL_DEPTH_TEST)
+            
+            # Calculate bitangent (cross product of normal and tangent)
+            # Normalize to ensure consistent length with other vectors
+            bitangent = np.cross(tangent, norm)
+            bitangent_length = np.linalg.norm(bitangent)
+            if bitangent_length > 0.001:  # Check for non-zero vector
+                bitangent = bitangent / bitangent_length
+            
+            # Normal vector (blue) - draw last to avoid occlusion
             glColor3f(0.0, 0.0, 1.0)
             glBegin(GL_LINES)
+            # Start from slightly offset position for better visibility
             glVertex3f(0.0, 0.0, 0.0)
             glVertex3f(norm[0] * 0.2, norm[1] * 0.2, norm[2] * 0.2)
             glEnd()
             
-            # Tangent vector (red)
+            # Bitangent vector (green) - draw second
+            glColor3f(0.0, 1.0, 0.0)
+            glBegin(GL_LINES)
+            # Start from slightly offset position for better visibility
+            glVertex3f(0.0, 0.0, 0.0)
+            glVertex3f(bitangent[0] * 0.2, bitangent[1] * 0.2, bitangent[2] * 0.2)
+            glEnd()
+            
+            # Tangent vector (red) - draw first
             glColor3f(1.0, 0.0, 0.0)
             glBegin(GL_LINES)
             glVertex3f(0.0, 0.0, 0.0)
             glVertex3f(tangent[0] * 0.2, tangent[1] * 0.2, tangent[2] * 0.2)
             glEnd()
             
-            # Calculate bitangent (cross product of normal and tangent)
-            bitangent = np.cross(norm, tangent)
+            x_axis = bitangent
+            y_axis = tangent
+            half_size = 0.086 / 2
             
-            # Bitangent vector (green)
-            glColor3f(0.0, 1.0, 0.0)
-            glBegin(GL_LINES)
-            glVertex3f(0.0, 0.0, 0.0)
-            glVertex3f(bitangent[0] * 0.2, bitangent[1] * 0.2, bitangent[2] * 0.2)
-            glEnd()
+            corners_3d = [
+                (-half_size * x_axis - half_size * y_axis),     # Bottom-left
+                (half_size * x_axis - half_size * y_axis),     # Bottom-right
+                (half_size * x_axis + half_size * y_axis),     # Top-right
+                (-half_size * x_axis + half_size * y_axis)    # Top-left
+            ]
+            # After calculating corners_3d
+
+            # Define colors for each corner
+            corner_colors = [
+                [1.0, 0.0, 0.0, 1.0],  # Red - Top-left
+                [0.0, 1.0, 0.0, 1.0],  # Green - Top-right
+                [0.0, 0.0, 1.0, 1.0],  # Blue - Bottom-right
+                [1.0, 1.0, 0.0, 1.0]   # Yellow - Bottom-left
+            ]
+
+            # Draw a small cube at each corner position
+            cube_size = 0.01  # Size of the debug cubes
+
+            # Enable lighting for the cubes
+            glEnable(GL_LIGHTING)
+
+            for i, corner in enumerate(corners_3d):
+                glPushMatrix()
+                
+                # Move to the corner position (add marker position since corners are relative)
+                corner_pos = corner
+                glTranslatef(corner_pos[0], corner_pos[1], corner_pos[2])
+                
+                # Set material for this corner cube
+                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
+                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, corner_colors[i])
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
+                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
+                
+                # Draw a small cube
+                glutSolidCube(cube_size)
+                
+                # Label the corner with its index (optional)
+                glDisable(GL_LIGHTING)
+                glColor3f(1.0, 1.0, 1.0)  # White text
+                glRasterPos3f(0, cube_size, 0)
+                
+                # Draw the text using bitmap characters
+                corner_text = str(i)
+                for c in corner_text:
+                    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(c))
+                    
+                glTranslatef(-corner_pos[0], -corner_pos[1], -corner_pos[2])
+                
+                glEnable(GL_LIGHTING)
+                glPopMatrix()
+
+            # Disable lighting again for the axes
+            glDisable(GL_LIGHTING)
             
+            
+            # Re-enable depth testing for other rendering
+            glEnable(GL_DEPTH_TEST)
             glEnable(GL_LIGHTING)
             
             glPopMatrix()
     
+    # def _draw_cameras(self):
+    #     """
+    #     Draw the camera positions and view frustums.
+    #     """
+        
+    #     for timestamp, pose in self.camera_poses.items():
+    #         # Extract camera position from the pose matrix
+    #         # The camera position is the negative of the translation vector
+    #         # transformed by the rotation matrix
+    #         rotation = pose[:3, :3]
+    #         translation = pose[:3, 3]
+    #         camera_pos = -np.dot(rotation.T, translation)
+            
+    #         glPushMatrix()
+            
+    #         # Translate to camera position
+    #         glTranslatef(camera_pos[0], camera_pos[1], camera_pos[2])
+            
+    #         # Apply camera orientation
+    #         # The rotation matrix in the pose is the inverse of the camera orientation
+    #         camera_orientation = rotation.T
+    #         orientation_matrix = np.eye(4)
+    #         orientation_matrix[:3, :3] = camera_orientation
+    #         glMultMatrixf(orientation_matrix.flatten('F'))
+            
+    #         # Draw camera as a small pyramid
+    #         glDisable(GL_LIGHTING)
+            
+    #         # Camera body (cyan)
+    #         glColor3f(0.0, 0.8, 0.8)
+            
+    #         # Draw camera frustum
+    #         glBegin(GL_LINES)
+    #         # Front face
+    #         glVertex3f(0, 0, 0)
+    #         glVertex3f(0.1, 0.1, -0.2)
+            
+    #         glVertex3f(0, 0, 0)
+    #         glVertex3f(-0.1, 0.1, -0.2)
+            
+    #         glVertex3f(0, 0, 0)
+    #         glVertex3f(-0.1, -0.1, -0.2)
+            
+    #         glVertex3f(0, 0, 0)
+    #         glVertex3f(0.1, -0.1, -0.2)
+            
+    #         # Back face
+    #         glVertex3f(0.1, 0.1, -0.2)
+    #         glVertex3f(-0.1, 0.1, -0.2)
+            
+    #         glVertex3f(-0.1, 0.1, -0.2)
+    #         glVertex3f(-0.1, -0.1, -0.2)
+            
+    #         glVertex3f(-0.1, -0.1, -0.2)
+    #         glVertex3f(0.1, -0.1, -0.2)
+            
+    #         glVertex3f(0.1, -0.1, -0.2)
+    #         glVertex3f(0.1, 0.1, -0.2)
+    #         glEnd()
+            
+    #         # Draw viewing direction
+    #         glColor3f(1.0, 1.0, 1.0)
+    #         glBegin(GL_LINES)
+    #         glVertex3f(0, 0, 0)
+    #         glVertex3f(0, 0, -0.3)
+    #         glEnd()
+            
+    #         glEnable(GL_LIGHTING)
+            
+    #         glPopMatrix()
     def _draw_cameras(self):
         """
-        Draw the camera positions and view frustums.
+        Draw the camera positions and view frustums with sequential numbering based on timestamps.
         """
-        for timestamp, pose in self.camera_poses.items():
+        
+        # Sort timestamps to ensure cameras are numbered in chronological order
+        sorted_timestamps = sorted(self.camera_poses.keys())
+        
+        # Draw each camera in timestamp order
+        for i, timestamp in enumerate(sorted_timestamps):
+            pose = self.camera_poses[timestamp]
+
             # Extract camera position from the pose matrix
-            # The camera position is the negative of the translation vector
-            # transformed by the rotation matrix
             rotation = pose[:3, :3]
             translation = pose[:3, 3]
-            camera_pos = -np.dot(rotation.T, translation)
+            # camera_pos = -np.dot(rotation.T, translation)
+            camera_pos = translation       
+                 
+            logger.log(Logger.DEBUG, f"pose{str(int(pd.Timestamp(timestamp).timestamp()))} in renderer :{translation}, {rotation}")
             
-            glPushMatrix()
+            
+            glPushMatrix()      
+            camera_orientation = rotation
+            orientation_matrix = np.eye(4)
+            orientation_matrix[:3, :3] = camera_orientation
+
+            glMultMatrixf(orientation_matrix.flatten('F'))
+            # glLoadIdentity()
             
             # Translate to camera position
             glTranslatef(camera_pos[0], camera_pos[1], camera_pos[2])
+
             
             # Apply camera orientation
-            # The rotation matrix in the pose is the inverse of the camera orientation
-            camera_orientation = rotation.T
-            orientation_matrix = np.eye(4)
-            orientation_matrix[:3, :3] = camera_orientation
-            glMultMatrixf(orientation_matrix.flatten('F'))
+            # camera_orientation = rotation.T
             
+            m = glGetFloatv(GL_MODELVIEW_MATRIX)
+            
+            logger.log(Logger.DEBUG, np.array(m).reshape((4, 4)).T)
+
+
             # Draw camera as a small pyramid
             glDisable(GL_LIGHTING)
             
@@ -484,9 +698,20 @@ class VisualizeModelRender:
             glVertex3f(0, 0, -0.3)
             glEnd()
             
+            # Draw camera number at frustum position
+            glColor3f(1.0, 1.0, 0.0)  # Yellow text for visibility
+            # Position the text at the center of the back face of the frustum
+            glRasterPos3f(0, 0, -0.2)
+            
+            # Draw the camera index number (1-based for user readability)
+            camera_number = str(pd.Timestamp(timestamp).timestamp())
+            for c in camera_number:
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(c))
+            
             glEnable(GL_LIGHTING)
             
             glPopMatrix()
+    
     
     def _draw_contents(self):
         """

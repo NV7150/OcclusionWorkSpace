@@ -52,7 +52,7 @@ class DataLoader:
                 # Extract timestamp from filename
                 timestamp_str = os.path.basename(rgb_file).split('_')[1].split('.')[0]
                 # Convert Unix timestamp to datetime64 properly
-                timestamp = np.datetime64(pd.Timestamp.fromtimestamp(float(timestamp_str)))
+                timestamp = np.datetime64(pd.Timestamp.fromtimestamp(float(timestamp_str), tz='UTC'))
                 
                 # Find corresponding depth image
                 depth_file = None

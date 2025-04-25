@@ -1,11 +1,14 @@
 import numpy as np
 import cv2
 from typing import Dict, Any, Optional
+
+import pandas as pd
 from Utils.MarkerPositionLoader import MarkerPositionLoader
 import pupil_apriltags as apriltags
 from Interfaces.Tracker import Tracker
 from Interfaces.Frame import Frame
 from Logger import logger, Logger
+from Utils.PnP_viz import visualize_pnp_result
 
 class ApriltagTracker(Tracker):
     """
@@ -127,9 +130,9 @@ class ApriltagTracker(Tracker):
             # Assuming the tag is in the XY plane with Z aligned with the normal
             
             # First, create a coordinate system where Z is aligned with the normal
-            z_axis = marker_norm / np.linalg.norm(marker_norm)
+            z_axis =  marker_norm / np.linalg.norm(marker_norm)
             
-            # Use the provided tangent for x-axis
+            # Use the provided tangent for y-axis
             # Make sure tangent is not parallel to z_axis
             if abs(np.dot(z_axis, marker_tangent)) > 0.99:
                 logger.log(Logger.WARNING, f"Tangent for tag {tag_id} is nearly parallel to normal, using arbitrary vector")
@@ -138,26 +141,28 @@ class ApriltagTracker(Tracker):
                     temp = np.array([1, 0, 0])
                 else:
                     temp = np.array([0, 1, 0])
-                x_axis = np.cross(temp, z_axis)
+                y_axis = np.cross(z_axis, temp)  # Changed cross product order to get y-axis
             else:
                 # Project tangent onto the plane perpendicular to z_axis
-                x_axis = marker_tangent - np.dot(marker_tangent, z_axis) * z_axis
+                y_axis = marker_tangent - np.dot(marker_tangent, z_axis) * z_axis
             
-            # Normalize x_axis and create y_axis
-            x_axis = x_axis / np.linalg.norm(x_axis)
-            y_axis = np.cross(z_axis, x_axis)
+            # Normalize y_axis and create x_axis for a right-handed coordinate system
+            y_axis = y_axis / np.linalg.norm(y_axis)
+            x_axis = np.cross(y_axis, z_axis)  # x = y × z for right-handed system
             
             # Calculate the corners of the tag in 3D space
+            
+            # It is from bottom-left(?) (https://github.com/pupil-labs/apriltags/issues/33)
             half_size = self.tag_size / 2
             corners_3d = [
-                marker_pos + (-half_size * x_axis - half_size * y_axis),  # Top-left
-                marker_pos + (half_size * x_axis - half_size * y_axis),   # Top-right
-                marker_pos + (half_size * x_axis + half_size * y_axis),   # Bottom-right
-                marker_pos + (-half_size * x_axis + half_size * y_axis)   # Bottom-left
+                marker_pos + (-half_size * x_axis - half_size * y_axis),     # Bottom-left
+                marker_pos + (half_size * x_axis - half_size * y_axis),     # Bottom-right
+                marker_pos + (half_size * x_axis + half_size * y_axis),     # Top-right
+                marker_pos + (-half_size * x_axis + half_size * y_axis)    # Top-left
             ]
-            
             # Get the corners of the tag in the image
             corners_2d = detection.corners
+            logger.log(Logger.DEBUG, f"Tag ID: {tag_id}, 2D corners: {corners_2d}")
             
             # Add to our collection of points
             object_points.extend(corners_3d)
@@ -166,38 +171,125 @@ class ApriltagTracker(Tracker):
         if not object_points:
             logger.log(Logger.DEBUG, "No known AprilTags found in frame")
             return self.last_valid_pose
-        
+
+        # Convert each 3D point to OpenCV coordinate system
+        object_points_opencv = []
+        for point in object_points:
+            # Apply the transformation to each point
+            point_opencv = np.array([
+                point[0],
+                -point[1],  # Flip Y axis
+                -point[2]   # Flip Z axis
+            ])
+            logger.log(Logger.DEBUG, f"Point in OpenGL: {point}, converted to OpenCV: {point_opencv}")
+            object_points_opencv.append(point_opencv)
+
         # Convert to numpy arrays
-        object_points = np.array(object_points, dtype=np.float32)
+        object_points = np.array(object_points_opencv, dtype=np.float32)
         image_points = np.array(image_points, dtype=np.float32)
         
-        # Use solvePnP to get the rotation and translation vectors
-        success, rvec, tvec = cv2.solvePnP(
+        
+        # Replace solvePnP with solvePnPRansac for better robustness against outliers
+        success, rvec, tvec, inliers = cv2.solvePnPRansac(
             object_points, 
             image_points, 
             self.camera_matrix, 
             self.dist_coeffs,
-            flags=cv2.SOLVEPNP_ITERATIVE
+            iterationsCount=100,           # RANSAC iterations
+            reprojectionError=8.0,         # Maximum allowed reprojection error (pixels)
+            confidence=0.99,               # Confidence probability
+            flags=cv2.SOLVEPNP_ITERATIVE  # Same flag as before
         )
+        
+        # Log how many inliers were found (useful for debugging)
+        if success:
+            inlier_count = len(inliers) if inliers is not None else 0
+            logger.log(Logger.DEBUG, f"PnP solved with {inlier_count}/{len(object_points)} inliers")
+
+        ##### for debgug: visualize_points #####
+        
+        # 画像のコピーを作成してデバッグ用の可視化を行う
+        debug_image = frame.rgb.copy()
+        
+        # グレースケールの場合はカラー画像に変換
+        if debug_image.ndim == 2:
+            debug_image = cv2.cvtColor(debug_image, cv2.COLOR_GRAY2BGR)
+            
+        # 検出されたポイントを描画
+        for i, point in enumerate(image_points):
+            # 点を赤い円で表示
+            cv2.circle(debug_image, (int(point[0]), int(point[1])), 5, (0, 0, 255), -1)
+            # ポイント番号を表示
+            cv2.putText(debug_image, str(i), (int(point[0]) + 5, int(point[1]) + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        
+        # AprilTagごとに4つの点を線で結ぶ
+        for i in range(0, len(image_points), 4):
+            if i + 3 < len(image_points):
+                quad_points = image_points[i:i+4]
+                
+                # 四角形の輪郭を青い線で描画
+                for j in range(4):
+                    pt1 = (int(quad_points[j][0]), int(quad_points[j][1]))
+                    pt2 = (int(quad_points[(j+1)%4][0]), int(quad_points[(j+1)%4][1]))
+                    cv2.line(debug_image, pt1, pt2, (255, 0, 0), 2)
+                
+                # タグの中心を計算
+                center_x = int(sum(p[0] for p in quad_points) / 4)
+                center_y = int(sum(p[1] for p in quad_points) / 4)
+                tag_index = i // 4
+                
+                # 検出されたタグ番号を表示
+                cv2.putText(debug_image, f"Tag {tag_index}", (center_x, center_y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+
+        # デバッグ画像を表示
+        cv2.imshow("AprilTag Detection", debug_image)
+        cv2.waitKey(1)  # 1ms待機（画像を表示するために必要）
+        
+        # Visualize the PnP result
+        unix_time = str(int(pd.Timestamp(frame.timestamp).timestamp()))
+        print(unix_time[-3:])
+        if unix_time[-3:] == "463" or unix_time[-3:] == "476":
+            visualize_pnp_result(object_points, np.vstack([rvec, tvec]))
+        
+        ####### end debug ########
         
         if not success:
             logger.log(Logger.WARNING, "Failed to solve PnP")
             return self.last_valid_pose
         
+        
         # Convert rotation vector to rotation matrix
         R, _ = cv2.Rodrigues(rvec)
         
-        # Create the 4x4 transformation matrix
-        # The camera pose in world coordinates is the inverse of the object pose in camera coordinates
-        # T_world_camera = inv(T_camera_world)
-        T_camera_world = np.eye(4)
-        T_camera_world[:3, :3] = R
-        T_camera_world[:3, 3] = tvec.flatten()
+        opencv_to_opengl = np.array([
+            [1.0,  0.0,  0.0, 0.0],
+            [0.0, -1.0,  0.0, 0.0],  # Flip Y axis
+            [0.0,  0.0, -1.0, 0.0],
+            [0.0,  0.0,  0.0, 1.0]# Flip Z axis
+        ])
+
+        # Create the camera-to-world transformation in OpenCV coordinates
+        # T_camera_world_opencv = np.eye(4)
+        # T_camera_world_opencv[:3, :3] = R.T @ opencv_to_opengl[:3, :3]
+        # tvec_opengl = (-R.T @ tvec).flatten()
+        # # tvec_opengl[1:] *= -1
+        # T_camera_world_opencv[:3, 3] = tvec_opengl
         
-        # Invert to get camera pose in world coordinates
-        T_world_camera = np.linalg.inv(T_camera_world)
+        T_camera_world_opencv = np.eye(4)
+        T_camera_world_opencv[:3, :3] = R.T 
+        tvec_opengl = (-R.T @ tvec).flatten()
+        T_camera_world_opencv[:3, 3] = tvec_opengl
         
+        # Apply the coordinate transformation to the rotation matrix
+        # T_camera_opengl = T_camera_world_opencv @ opencv_to_opengl
+
         # Store this pose as the last valid pose
-        self.last_valid_pose = T_world_camera
+        self.last_valid_pose = T_camera_world_opencv
         
-        return T_world_camera
+        return T_camera_world_opencv
+        
+        # self.last_valid_pose = T_camera_world_opencv
+        
+        # return T_camera_world_opencv
