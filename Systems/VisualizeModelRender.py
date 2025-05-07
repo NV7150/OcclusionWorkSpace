@@ -14,10 +14,327 @@ from PIL import Image
 from Logger import logger, Logger
 
 
+class Shader:
+    """
+    Shader class for managing GLSL shaders.
+    """
+    
+    def __init__(self, vertex_source: str, fragment_source: str):
+        """
+        Initialize the shader program with vertex and fragment shader sources.
+        
+        Args:
+            vertex_source: GLSL vertex shader source code
+            fragment_source: GLSL fragment shader source code
+        """
+        self.program_id = None
+        self._create_program(vertex_source, fragment_source)
+    
+    def _create_program(self, vertex_source: str, fragment_source: str):
+        """
+        Create a shader program from vertex and fragment shader sources.
+        
+        Args:
+            vertex_source: GLSL vertex shader source code
+            fragment_source: GLSL fragment shader source code
+        """
+        # Create shaders
+        vertex_shader = self._compile_shader(vertex_source, GL_VERTEX_SHADER)
+        fragment_shader = self._compile_shader(fragment_source, GL_FRAGMENT_SHADER)
+        
+        # Create program
+        program = glCreateProgram()
+        glAttachShader(program, vertex_shader)
+        glAttachShader(program, fragment_shader)
+        glLinkProgram(program)
+        
+        # Check for linking errors
+        if not glGetProgramiv(program, GL_LINK_STATUS):
+            info_log = glGetProgramInfoLog(program)
+            glDeleteProgram(program)
+            glDeleteShader(vertex_shader)
+            glDeleteShader(fragment_shader)
+            raise RuntimeError(f"Shader program linking failed: {info_log}")
+        
+        # Clean up
+        glDeleteShader(vertex_shader)
+        glDeleteShader(fragment_shader)
+        
+        self.program_id = program
+    
+    def _compile_shader(self, source: str, shader_type: int) -> int:
+        """
+        Compile a shader from source.
+        
+        Args:
+            source: GLSL shader source code
+            shader_type: GL_VERTEX_SHADER or GL_FRAGMENT_SHADER
+            
+        Returns:
+            Shader ID
+        """
+        shader = glCreateShader(shader_type)
+        glShaderSource(shader, source)
+        glCompileShader(shader)
+        
+        # Check for compilation errors
+        if not glGetShaderiv(shader, GL_COMPILE_STATUS):
+            info_log = glGetShaderInfoLog(shader)
+            glDeleteShader(shader)
+            shader_type_str = "vertex" if shader_type == GL_VERTEX_SHADER else "fragment"
+            raise RuntimeError(f"{shader_type_str} shader compilation failed: {info_log}")
+        
+        return shader
+    
+    def use(self):
+        """
+        Use this shader program.
+        """
+        glUseProgram(self.program_id)
+    
+    def set_uniform_matrix4fv(self, name: str, value: np.ndarray):
+        """
+        Set a uniform mat4 value.
+        
+        Args:
+            name: Uniform name
+            value: 4x4 matrix as numpy array
+        """
+        location = glGetUniformLocation(self.program_id, name)
+        glUniformMatrix4fv(location, 1, GL_FALSE, value)
+
+    def set_uniform_3fv(self, name: str, value: np.ndarray):
+        """
+        Set a uniform vec3 value.
+        
+        Args:
+            name: Uniform name
+            value: 3D vector as numpy array
+        """
+        location = glGetUniformLocation(self.program_id, name)
+        glUniform3fv(location, 1, value)
+    
+    def set_uniform_1f(self, name: str, value: float):
+        """
+        Set a uniform float value.
+        
+        Args:
+            name: Uniform name
+            value: Float value
+        """
+        location = glGetUniformLocation(self.program_id, name)
+        glUniform1f(location, value)
+    
+    def set_uniform_1i(self, name: str, value: int):
+        """
+        Set a uniform int value.
+        
+        Args:
+            name: Uniform name
+            value: Int value
+        """
+        location = glGetUniformLocation(self.program_id, name)
+        glUniform1i(location, value)
+
+
+class Mesh:
+    """
+    Mesh class for managing vertex data and rendering.
+    """
+    
+    def __init__(self, vertices: np.ndarray, normals: np.ndarray, indices: np.ndarray):
+        """
+        Initialize the mesh with vertex data.
+        
+        Args:
+            vertices: Vertex positions (Nx3 array)
+            normals: Vertex normals (Nx3 array)
+            indices: Triangle indices (Nx3 array)
+        """
+        self.vertices = vertices
+        self.normals = normals
+        self.indices = indices
+        self.vao = None
+        self.vbo_vertices = None
+        self.vbo_normals = None
+        self.ebo = None
+        self._setup_mesh()
+    
+    def _setup_mesh(self):
+        """
+        Set up the mesh VAO and VBOs.
+        """
+        # Create VAO
+        self.vao = glGenVertexArrays(1)
+        glBindVertexArray(self.vao)
+        
+        # Create VBO for vertices
+        self.vbo_vertices = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_vertices)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(0)
+        
+        # Create VBO for normals
+        self.vbo_normals = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_normals)
+        glBufferData(GL_ARRAY_BUFFER, self.normals.nbytes, self.normals, GL_STATIC_DRAW)
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(1)
+        
+        # Create EBO for indices
+        self.ebo = glGenBuffers(1)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, self.indices.nbytes, self.indices, GL_STATIC_DRAW)
+        
+        # Unbind VAO
+        glBindVertexArray(0)
+    
+    def draw(self):
+        """
+        Draw the mesh.
+        """
+        glBindVertexArray(self.vao)
+        glDrawElements(GL_TRIANGLES, len(self.indices) * 3, GL_UNSIGNED_INT, None)
+        glBindVertexArray(0)
+    
+    def delete(self):
+        """
+        Delete the mesh VAO and VBOs.
+        """
+        glDeleteVertexArrays(1, [self.vao])
+        glDeleteBuffers(1, [self.vbo_vertices])
+        glDeleteBuffers(1, [self.vbo_normals])
+        glDeleteBuffers(1, [self.ebo])
+
+
+class Model:
+    """
+    Model class for managing a collection of meshes.
+    """
+    
+    def __init__(self):
+        """
+        Initialize an empty model.
+        """
+        self.meshes = []
+    
+    def add_mesh(self, mesh: Mesh):
+        """
+        Add a mesh to the model.
+        
+        Args:
+            mesh: Mesh to add
+        """
+        self.meshes.append(mesh)
+    
+    def draw(self):
+        """
+        Draw all meshes in the model.
+        """
+        for mesh in self.meshes:
+            mesh.draw()
+    
+    def delete(self):
+        """
+        Delete all meshes in the model.
+        """
+        for mesh in self.meshes:
+            mesh.delete()
+
+
 class VisualizeModelRender:
     """
     VisualizeModelRender is responsible for rendering the MR scene visualization.
     It handles rendering the scene model, reference markers, camera positions, and MR contents.
+    This implementation uses modern OpenGL with shaders and VBOs.
+    """
+    
+    # Vertex shader source
+    VERTEX_SHADER = """
+    #version 330 core
+    layout (location = 0) in vec3 aPos;
+    layout (location = 1) in vec3 aNormal;
+    
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+    
+    out vec3 FragPos;
+    out vec3 Normal;
+    
+    void main()
+    {
+        FragPos = vec3(model * vec4(aPos, 1.0));
+        Normal = mat3(transpose(inverse(model))) * aNormal;
+        gl_Position = projection * view * vec4(FragPos, 1.0);
+    }
+    """
+    
+    # Fragment shader source
+    FRAGMENT_SHADER = """
+    #version 330 core
+    in vec3 FragPos;
+    in vec3 Normal;
+    
+    uniform vec3 lightPos;
+    uniform vec3 viewPos;
+    uniform vec3 lightColor;
+    uniform vec3 objectColor;
+    uniform float shininess;
+    
+    out vec4 FragColor;
+    
+    void main()
+    {
+        // Ambient
+        float ambientStrength = 0.2;
+        vec3 ambient = ambientStrength * lightColor;
+        
+        // Diffuse
+        vec3 norm = normalize(Normal);
+        vec3 lightDir = normalize(lightPos - FragPos);
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 diffuse = diff * lightColor;
+        
+        // Specular
+        float specularStrength = 0.5;
+        vec3 viewDir = normalize(viewPos - FragPos);
+        vec3 reflectDir = reflect(-lightDir, norm);
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+        vec3 specular = specularStrength * spec * lightColor;
+        
+        // Result
+        vec3 result = (ambient + diffuse + specular) * objectColor;
+        FragColor = vec4(result, 1.0);
+    }
+    """
+    
+    # Simple color shader for lines and basic shapes
+    SIMPLE_VERTEX_SHADER = """
+    #version 330 core
+    layout (location = 0) in vec3 aPos;
+    
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+    
+    void main()
+    {
+        gl_Position = projection * view * model * vec4(aPos, 1.0);
+    }
+    """
+    
+    SIMPLE_FRAGMENT_SHADER = """
+    #version 330 core
+    uniform vec3 color;
+    
+    out vec4 FragColor;
+    
+    void main()
+    {
+        FragColor = vec4(color, 1.0);
+    }
     """
     
     def __init__(self):
@@ -70,6 +387,20 @@ class VisualizeModelRender:
         
         # Model cache
         self.model_cache = {}
+        
+        # Shader programs
+        self.shader = None
+        self.simple_shader = None
+        
+        # Geometry for basic shapes
+        self.cube_vao = None
+        self.grid_vao = None
+        self.axes_vao = None
+        self.arrow_vao = None
+        
+        # Light properties
+        self.light_pos = np.array([1.0, 1.0, 2.0], dtype=np.float32)
+        self.light_color = np.array([1.0, 1.0, 1.0], dtype=np.float32)
     
     def initialize(self, scene_model_path: str):
         """
@@ -86,15 +417,10 @@ class VisualizeModelRender:
         
         # Set up OpenGL state
         glEnable(GL_DEPTH_TEST)
-        glEnable(GL_LIGHTING)
-        glEnable(GL_LIGHT0)
-        glEnable(GL_COLOR_MATERIAL)
-        glEnable(GL_NORMALIZE)
         
-        # Set up light
-        glLightfv(GL_LIGHT0, GL_POSITION, [0, 1, 1, 0])
-        glLightfv(GL_LIGHT0, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 0.8, 0.8, 1.0])
+        # Initialize shaders
+        self.shader = Shader(self.VERTEX_SHADER, self.FRAGMENT_SHADER)
+        self.simple_shader = Shader(self.SIMPLE_VERTEX_SHADER, self.SIMPLE_FRAGMENT_SHADER)
         
         # Set up callbacks
         glutDisplayFunc(self._display_callback)
@@ -104,14 +430,207 @@ class VisualizeModelRender:
         glutKeyboardFunc(self._keyboard_callback)
         glutSpecialFunc(self._special_key_callback)
         
+        # Create basic geometry
+        self._create_basic_geometry()
+        
         # Load scene model
         self._load_scene_model(scene_model_path)
         
-        logger.log(Logger.SYSTEM, "Renderer initialized")
+        logger.log(Logger.SYSTEM, "Renderer initialized with modern OpenGL shaders")
+    
+    def _create_basic_geometry(self):
+        """
+        Create VAOs and VBOs for basic geometry (cube, grid, axes, arrow).
+        """
+        # Create cube
+        self._create_cube()
+        
+        # Create grid
+        self._create_grid()
+        
+        # Create axes
+        self._create_axes()
+        
+        # Create arrow
+        self._create_arrow()
+    
+    def _create_cube(self):
+        """
+        Create a cube VAO for markers and other simple objects.
+        """
+        # Cube vertices
+        vertices = np.array([
+            # Front face
+            -0.5, -0.5,  0.5,  # 0
+             0.5, -0.5,  0.5,  # 1
+             0.5,  0.5,  0.5,  # 2
+            -0.5,  0.5,  0.5,  # 3
+            # Back face
+            -0.5, -0.5, -0.5,  # 4
+             0.5, -0.5, -0.5,  # 5
+             0.5,  0.5, -0.5,  # 6
+            -0.5,  0.5, -0.5,  # 7
+        ], dtype=np.float32)
+        
+        # Cube normals
+        normals = np.array([
+            # Front face
+             0.0,  0.0,  1.0,  # 0
+             0.0,  0.0,  1.0,  # 1
+             0.0,  0.0,  1.0,  # 2
+             0.0,  0.0,  1.0,  # 3
+            # Back face
+             0.0,  0.0, -1.0,  # 4
+             0.0,  0.0, -1.0,  # 5
+             0.0,  0.0, -1.0,  # 6
+             0.0,  0.0, -1.0,  # 7
+        ], dtype=np.float32)
+        
+        # Cube indices
+        indices = np.array([
+            # Front face
+            0, 1, 2, 2, 3, 0,
+            # Right face
+            1, 5, 6, 6, 2, 1,
+            # Back face
+            5, 4, 7, 7, 6, 5,
+            # Left face
+            4, 0, 3, 3, 7, 4,
+            # Top face
+            3, 2, 6, 6, 7, 3,
+            # Bottom face
+            4, 5, 1, 1, 0, 4
+        ], dtype=np.uint32)
+        
+        # Create VAO
+        self.cube_vao = glGenVertexArrays(1)
+        glBindVertexArray(self.cube_vao)
+        
+        # Create VBO for vertices
+        vbo_vertices = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(0)
+        
+        # Create VBO for normals
+        vbo_normals = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
+        glBufferData(GL_ARRAY_BUFFER, normals.nbytes, normals, GL_STATIC_DRAW)
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(1)
+        
+        # Create EBO for indices
+        ebo = glGenBuffers(1)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL_STATIC_DRAW)
+        
+        # Unbind VAO
+        glBindVertexArray(0)
+    
+    def _create_grid(self):
+        """
+        Create a grid VAO for the reference grid.
+        """
+        grid_size = 5
+        grid_step = 0.2
+        vertices = []
+        
+        # Create grid lines
+        for i in range(-grid_size, grid_size + 1):
+            # X lines
+            vertices.extend([i * grid_step, 0, -grid_size * grid_step])
+            vertices.extend([i * grid_step, 0, grid_size * grid_step])
+            
+            # Z lines
+            vertices.extend([-grid_size * grid_step, 0, i * grid_step])
+            vertices.extend([grid_size * grid_step, 0, i * grid_step])
+        
+        vertices = np.array(vertices, dtype=np.float32)
+        
+        # Create VAO
+        self.grid_vao = glGenVertexArrays(1)
+        glBindVertexArray(self.grid_vao)
+        
+        # Create VBO for vertices
+        vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(0)
+        
+        # Unbind VAO
+        glBindVertexArray(0)
+    
+    def _create_axes(self):
+        """
+        Create axes VAO for coordinate axes.
+        """
+        vertices = np.array([
+            # X axis (red)
+            0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0,
+            # Y axis (green)
+            0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            # Z axis (blue)
+            0.0, 0.0, 0.0,
+            0.0, 0.0, 1.0
+        ], dtype=np.float32)
+        
+        # Create VAO
+        self.axes_vao = glGenVertexArrays(1)
+        glBindVertexArray(self.axes_vao)
+        
+        # Create VBO for vertices
+        vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(0)
+        
+        # Unbind VAO
+        glBindVertexArray(0)
+    
+    def _create_arrow(self):
+        """
+        Create arrow VAO for direction indicators.
+        """
+        # Simple arrow as a line with a small cone at the end
+        vertices = np.array([
+            # Line part
+            0.0, 0.0, 0.0,
+            0.0, 0.0, 0.8,
+            # Cone base (triangle fan)
+            0.0, 0.0, 0.8,
+            0.05, 0.0, 0.7,
+            0.035, 0.035, 0.7,
+            0.0, 0.05, 0.7,
+            -0.035, 0.035, 0.7,
+            -0.05, 0.0, 0.7,
+            -0.035, -0.035, 0.7,
+            0.0, -0.05, 0.7,
+            0.035, -0.035, 0.7,
+            0.05, 0.0, 0.7
+        ], dtype=np.float32)
+        
+        # Create VAO
+        self.arrow_vao = glGenVertexArrays(1)
+        glBindVertexArray(self.arrow_vao)
+        
+        # Create VBO for vertices
+        vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(0)
+        
+        # Unbind VAO
+        glBindVertexArray(0)
     
     def _load_scene_model(self, model_path: str):
         """
-        Load the scene model from a file.
+        Load the scene model from a file using modern OpenGL.
         
         Args:
             model_path: Path to the model file
@@ -132,8 +651,23 @@ class VisualizeModelRender:
                     self._create_fallback_scene()
                     return
                 
-                # Create a copy of the scene data we need
-                self.scene_model = scene
+                # Create a model from the scene
+                model = Model()
+                
+                # Process each mesh
+                for mesh in scene.meshes:
+                    # Extract vertices, normals, and indices
+                    vertices = mesh.vertices.astype(np.float32)
+                    normals = mesh.normals.astype(np.float32)
+                    
+                    # Convert faces to indices
+                    indices = np.array([idx for face in mesh.faces for idx in face], dtype=np.uint32)
+                    
+                    # Create mesh
+                    mesh_obj = Mesh(vertices, normals, indices)
+                    model.add_mesh(mesh_obj)
+                
+                self.scene_model = model
                 logger.log(Logger.SYSTEM, f"Scene model loaded with {len(scene.meshes)} meshes")
         except Exception as e:
             logger.log(Logger.ERROR, f"Error loading scene model: {e}")
@@ -211,511 +745,495 @@ class VisualizeModelRender:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         # Set up the projection matrix
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(45.0, self.window_width / self.window_height, 0.1, 100.0)
+        projection = pyrr.matrix44.create_perspective_projection(
+            fovy=45.0,
+            aspect=self.window_width / self.window_height,
+            near=0.1,
+            far=100.0
+        )
         
-        # Set up the modelview matrix based on view mode
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        
+        # Set up the view matrix based on view mode
         if self.view_mode == "camera" and self.current_camera_timestamp in self.camera_poses:
             # Use the selected camera pose
             camera_pose = self.camera_poses[self.current_camera_timestamp]
             # Invert the camera pose to get the view matrix
             view_matrix = np.linalg.inv(camera_pose)
-            glMultMatrixf(view_matrix.flatten('F'))
+            eye_pos = -np.dot(camera_pose[:3, :3].T, camera_pose[:3, 3])
         elif self.view_mode == "marker" and self.current_marker_id in self.marker_positions:
             # Look at the selected marker
             marker_pos = self.marker_positions[self.current_marker_id]["pos"]
             marker_norm = self.marker_positions[self.current_marker_id]["norm"]
             # Position the camera along the marker normal
-            eye = marker_pos + marker_norm * 0.5
-            gluLookAt(eye[0], eye[1], eye[2], marker_pos[0], marker_pos[1], marker_pos[2], 0, 1, 0)
+            eye_pos = marker_pos + marker_norm * 0.5
+            view_matrix = pyrr.matrix44.create_look_at(
+                eye=eye_pos,
+                target=marker_pos,
+                up=[0, 1, 0]
+            )
         else:
             # Free view mode
             # Apply zoom
-            eye = self.camera_pos * self.zoom
-            gluLookAt(eye[0], eye[1], eye[2], 
-                      self.camera_target[0], self.camera_target[1], self.camera_target[2], 
-                      self.camera_up[0], self.camera_up[1], self.camera_up[2])
+            eye_pos = self.camera_pos * self.zoom
+            view_matrix = pyrr.matrix44.create_look_at(
+                eye=eye_pos,
+                target=self.camera_target,
+                up=self.camera_up
+            )
             
             # Apply rotation
-            glRotatef(self.rotation_x, 1, 0, 0)
-            glRotatef(self.rotation_y, 0, 1, 0)
+            rotation_x = pyrr.matrix44.create_from_x_rotation(np.radians(self.rotation_x))
+            rotation_y = pyrr.matrix44.create_from_y_rotation(np.radians(self.rotation_y))
+            view_matrix = pyrr.matrix44.multiply(rotation_x, view_matrix)
+            view_matrix = pyrr.matrix44.multiply(rotation_y, view_matrix)
         
         # Draw the scene
-        self._draw_scene()
+        self._draw_scene(view_matrix, projection, eye_pos)
         
         # Swap buffers
         glutSwapBuffers()
     
-    def _draw_scene(self):
+    def _draw_scene(self, view_matrix, projection_matrix, eye_pos):
         """
         Draw the entire scene.
+        
+        Args:
+            view_matrix: View matrix
+            projection_matrix: Projection matrix
+            eye_pos: Camera position
         """
         # Draw coordinate axes
         if self.show_axes:
-            self._draw_axes()
+            self._draw_axes(view_matrix, projection_matrix)
         
         # Draw grid
         if self.show_grid:
-            self._draw_grid()
+            self._draw_grid(view_matrix, projection_matrix)
         
         # Draw scene model
-        if self.show_scene:
-            self._draw_scene_model()
+        if self.show_scene and self.scene_model:
+            self._draw_scene_model(view_matrix, projection_matrix, eye_pos)
         
         # Draw markers
         if self.show_markers:
-            self._draw_markers()
+            self._draw_markers(view_matrix, projection_matrix, eye_pos)
         
         # Draw camera positions
         if self.show_cameras:
-            self._draw_cameras()
+            self._draw_cameras(view_matrix, projection_matrix)
         
         # Draw MR contents
         if self.show_contents:
-            self._draw_contents()
+            self._draw_contents(view_matrix, projection_matrix, eye_pos)
     
-    def _draw_axes(self):
+
+    def _draw_axes(self, view_matrix, projection_matrix):
         """
-        Draw coordinate axes.
+        Draw coordinate axes using shaders.
+        
+        Args:
+            view_matrix: View matrix
+            projection_matrix: Projection matrix
         """
-        glDisable(GL_LIGHTING)
-        glLineWidth(3.0)
+        # Use simple shader
+        self.simple_shader.use()
         
-        # X axis (red)
-        glColor3f(1.0, 0.0, 0.0)
-        glBegin(GL_LINES)
-        glVertex3f(0.0, 0.0, 0.0)
-        glVertex3f(1.0, 0.0, 0.0)
-        glEnd()
+        # Set matrices
+        model_matrix = np.identity(4, dtype=np.float32)
+        self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
+        self.simple_shader.set_uniform_matrix4fv("view", view_matrix)
+        self.simple_shader.set_uniform_matrix4fv("projection", projection_matrix)
         
-        # Y axis (green)
-        glColor3f(0.0, 1.0, 0.0)
-        glBegin(GL_LINES)
-        glVertex3f(0.0, 0.0, 0.0)
-        glVertex3f(0.0, 1.0, 0.0)
-        glEnd()
+        # Draw X axis (red)
+        self.simple_shader.set_uniform_3fv("color", np.array([1.0, 0.0, 0.0], dtype=np.float32))
+        glBindVertexArray(self.axes_vao)
+        glDrawArrays(GL_LINES, 0, 2)
         
-        # Z axis (blue)
-        glColor3f(0.0, 0.0, 1.0)
-        glBegin(GL_LINES)
-        glVertex3f(0.0, 0.0, 0.0)
-        glVertex3f(0.0, 0.0, 1.0)
-        glEnd()
+        # Draw Y axis (green)
+        self.simple_shader.set_uniform_3fv("color", np.array([0.0, 1.0, 0.0], dtype=np.float32))
+        glDrawArrays(GL_LINES, 2, 2)
         
-        glEnable(GL_LIGHTING)
+        # Draw Z axis (blue)
+        self.simple_shader.set_uniform_3fv("color", np.array([0.0, 0.0, 1.0], dtype=np.float32))
+        glDrawArrays(GL_LINES, 4, 2)
+        
+        glBindVertexArray(0)
     
-    def _draw_grid(self):
+    def _draw_grid(self, view_matrix, projection_matrix):
         """
-        Draw a reference grid.
-        """
-        glDisable(GL_LIGHTING)
-        glColor3f(0.5, 0.5, 0.5)
-        glLineWidth(1.0)
+        Draw reference grid using shaders.
         
+        Args:
+            view_matrix: View matrix
+            projection_matrix: Projection matrix
+        """
+        # Use simple shader
+        self.simple_shader.use()
+        
+        # Set matrices
+        model_matrix = np.identity(4, dtype=np.float32)
+        self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
+        self.simple_shader.set_uniform_matrix4fv("view", view_matrix)
+        self.simple_shader.set_uniform_matrix4fv("projection", projection_matrix)
+        
+        # Set color (gray)
+        self.simple_shader.set_uniform_3fv("color", np.array([0.5, 0.5, 0.5], dtype=np.float32))
+        
+        # Draw grid
+        glBindVertexArray(self.grid_vao)
         grid_size = 5
-        grid_step = 0.2
-        
-        glBegin(GL_LINES)
-        for i in range(-grid_size, grid_size + 1):
-            # X lines
-            glVertex3f(i * grid_step, 0, -grid_size * grid_step)
-            glVertex3f(i * grid_step, 0, grid_size * grid_step)
-            
-            # Z lines
-            glVertex3f(-grid_size * grid_step, 0, i * grid_step)
-            glVertex3f(grid_size * grid_step, 0, i * grid_step)
-        glEnd()
-        
-        glEnable(GL_LIGHTING)
+        glDrawArrays(GL_LINES, 0, (grid_size * 2 + 1) * 4)
+        glBindVertexArray(0)
     
-    def _draw_scene_model(self):
+    def _draw_scene_model(self, view_matrix, projection_matrix, eye_pos):
         """
-        Draw the scene model.
+        Draw the scene model using shaders.
+        
+        Args:
+            view_matrix: View matrix
+            projection_matrix: Projection matrix
+            eye_pos: Camera position
         """
-        if self.scene_model is None:
+        if not self.scene_model:
             return
         
-        glPushMatrix()
+        # Use shader
+        self.shader.use()
         
-        # Set material properties for the scene model
-        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [0.8, 0.8, 0.8, 1.0])
-        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.0, 0.0, 0.0, 1.0])
-        glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0.0)
+        # Set matrices
+        model_matrix = np.identity(4, dtype=np.float32)
+        self.shader.set_uniform_matrix4fv("model", model_matrix)
+        self.shader.set_uniform_matrix4fv("view", view_matrix)
+        self.shader.set_uniform_matrix4fv("projection", projection_matrix)
         
-        # Draw each mesh in the scene
-        for mesh in self.scene_model.meshes:
-            glBegin(GL_TRIANGLES)
-            for face in mesh.faces:
-                for vertex_idx in face:
-                    # Set normal
-                    if mesh.normals.size > 0:
-                        normal = mesh.normals[vertex_idx]
-                        glNormal3f(normal[0], normal[1], normal[2])
-                    
-                    # Set vertex
-                    vertex = mesh.vertices[vertex_idx]
-                    glVertex3f(vertex[0], vertex[1], vertex[2])
-            glEnd()
+        # Set lighting properties
+        self.shader.set_uniform_3fv("lightPos", self.light_pos)
+        self.shader.set_uniform_3fv("viewPos", eye_pos)
+        self.shader.set_uniform_3fv("lightColor", self.light_color)
+        self.shader.set_uniform_3fv("objectColor", np.array([0.8, 0.8, 0.8], dtype=np.float32))
+        self.shader.set_uniform_1f("shininess", 32.0)
         
-        glPopMatrix()
+        # Draw model
+        self.scene_model.draw()
     
-    # def _draw_markers(self):
-    #     """
-    #     Draw the reference markers.
-    #     """
-    #     for marker_id, marker_data in self.marker_positions.items():
-    #         pos = marker_data["pos"]
-    #         norm = marker_data["norm"]
-    #         tangent = marker_data["tangent"]
-            
-    #         glPushMatrix()
-            
-    #         # Translate to marker position
-    #         glTranslatef(pos[0], pos[1], pos[2])
-            
-    #         # Draw marker as a small cube
-    #         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.0, 1.0])
-    #         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1.0, 1.0, 0.0, 1.0])
-    #         glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-    #         glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
-            
-    #         # Draw a cube for the marker
-    #         glutSolidCube(0.05)
-            
-    #         # Draw normal vector as an arrow
-    #         glDisable(GL_LIGHTING)
-    #         glLineWidth(2.0)
-            
-    #         # Normal vector (blue)
-    #         glColor3f(0.0, 0.0, 1.0)
-    #         glBegin(GL_LINES)
-    #         glVertex3f(0.0, 0.0, 0.0)
-    #         glVertex3f(norm[0] * 0.2, norm[1] * 0.2, norm[2] * 0.2)
-    #         glEnd()
-            
-    #         # Tangent vector (red)
-    #         glColor3f(1.0, 0.0, 0.0)
-    #         glBegin(GL_LINES)
-    #         glVertex3f(0.0, 0.0, 0.0)
-    #         glVertex3f(tangent[0] * 0.2, tangent[1] * 0.2, tangent[2] * 0.2)
-    #         glEnd()
-            
-    #         # Calculate bitangent (cross product of normal and tangent)
-    #         bitangent = np.cross(norm, tangent)
-            
-    #         # Bitangent vector (green)
-    #         glColor3f(0.0, 1.0, 0.0)
-    #         glBegin(GL_LINES)
-    #         glVertex3f(0.0, 0.0, 0.0)
-    #         glVertex3f(bitangent[0] * 0.2, bitangent[1] * 0.2, bitangent[2] * 0.2)
-    #         glEnd()
-            
-    #         glEnable(GL_LIGHTING)
-            
-    #         glPopMatrix()
-    def _draw_markers(self):
+    def _draw_markers(self, view_matrix, projection_matrix, eye_pos):
         """
-        Draw the reference markers.
+        Draw the reference markers using shaders.
+        
+        Args:
+            view_matrix: View matrix
+            projection_matrix: Projection matrix
+            eye_pos: Camera position
         """
         for marker_id, marker_data in self.marker_positions.items():
             pos = marker_data["pos"]
             norm = marker_data["norm"]
             tangent = marker_data["tangent"]
             
-            glPushMatrix()
-            
-            # Translate to marker position
-            glTranslatef(pos[0], pos[1], pos[2])
-            
-            # Draw marker as a small cube
-            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.0, 1.0])
-            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1.0, 1.0, 0.0, 1.0])
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-            glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
-            
-            # Draw a cube for the marker
-            glutSolidCube(0.05)
-            
-            # Draw coordinate vectors
-            glDisable(GL_LIGHTING)
-            glLineWidth(2.0)
-            
-            # Disable depth testing to ensure all lines are visible
-            glDisable(GL_DEPTH_TEST)
-            
-            # Calculate bitangent (cross product of normal and tangent)
-            # Normalize to ensure consistent length with other vectors
+            # Calculate bitangent (cross product of tangent and normal)
             bitangent = np.cross(tangent, norm)
             bitangent_length = np.linalg.norm(bitangent)
             if bitangent_length > 0.001:  # Check for non-zero vector
                 bitangent = bitangent / bitangent_length
             
-            # Normal vector (blue) - draw last to avoid occlusion
-            glColor3f(0.0, 0.0, 1.0)
-            glBegin(GL_LINES)
-            # Start from slightly offset position for better visibility
-            glVertex3f(0.0, 0.0, 0.0)
-            glVertex3f(norm[0] * 0.2, norm[1] * 0.2, norm[2] * 0.2)
-            glEnd()
+            # Draw marker cube
+            self.shader.use()
             
-            # Bitangent vector (green) - draw second
-            glColor3f(0.0, 1.0, 0.0)
-            glBegin(GL_LINES)
-            # Start from slightly offset position for better visibility
-            glVertex3f(0.0, 0.0, 0.0)
-            glVertex3f(bitangent[0] * 0.2, bitangent[1] * 0.2, bitangent[2] * 0.2)
-            glEnd()
+            # Create model matrix for the marker
+            model_matrix = np.identity(4, dtype=np.float32)
+            # Apply translation
+            model_matrix[0, 3] = pos[0]
+            model_matrix[1, 3] = pos[1]
+            model_matrix[2, 3] = pos[2]
+            # Apply scale
+            scale_matrix = pyrr.matrix44.create_from_scale([0.05, 0.05, 0.05])
+            model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
             
-            # Tangent vector (red) - draw first
-            glColor3f(1.0, 0.0, 0.0)
-            glBegin(GL_LINES)
-            glVertex3f(0.0, 0.0, 0.0)
-            glVertex3f(tangent[0] * 0.2, tangent[1] * 0.2, tangent[2] * 0.2)
-            glEnd()
+            # Set matrices
+            self.shader.set_uniform_matrix4fv("model", model_matrix)
+            self.shader.set_uniform_matrix4fv("view", view_matrix)
+            self.shader.set_uniform_matrix4fv("projection", projection_matrix)
             
-            x_axis = bitangent
-            y_axis = tangent
-            half_size = 0.086 / 2
+            # Set lighting properties
+            self.shader.set_uniform_3fv("lightPos", self.light_pos)
+            self.shader.set_uniform_3fv("viewPos", eye_pos)
+            self.shader.set_uniform_3fv("lightColor", self.light_color)
+            self.shader.set_uniform_3fv("objectColor", np.array([1.0, 1.0, 0.0], dtype=np.float32))
+            self.shader.set_uniform_1f("shininess", 100.0)
             
-            corners_3d = [
-                (-half_size * x_axis - half_size * y_axis),     # Bottom-left
-                (half_size * x_axis - half_size * y_axis),     # Bottom-right
-                (half_size * x_axis + half_size * y_axis),     # Top-right
-                (-half_size * x_axis + half_size * y_axis)    # Top-left
-            ]
-            # After calculating corners_3d
-
-            # Define colors for each corner
-            corner_colors = [
-                [1.0, 0.0, 0.0, 1.0],  # Red - Top-left
-                [0.0, 1.0, 0.0, 1.0],  # Green - Top-right
-                [0.0, 0.0, 1.0, 1.0],  # Blue - Bottom-right
-                [1.0, 1.0, 0.0, 1.0]   # Yellow - Bottom-left
-            ]
-
-            # Draw a small cube at each corner position
-            cube_size = 0.01  # Size of the debug cubes
-
-            # Enable lighting for the cubes
-            glEnable(GL_LIGHTING)
-
-            for i, corner in enumerate(corners_3d):
-                glPushMatrix()
-                
-                # Move to the corner position (add marker position since corners are relative)
-                corner_pos = corner
-                glTranslatef(corner_pos[0], corner_pos[1], corner_pos[2])
-                
-                # Set material for this corner cube
-                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
-                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, corner_colors[i])
-                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
-                
-                # Draw a small cube
-                glutSolidCube(cube_size)
-                
-                # Label the corner with its index (optional)
-                glDisable(GL_LIGHTING)
-                glColor3f(1.0, 1.0, 1.0)  # White text
-                glRasterPos3f(0, cube_size, 0)
-                
-                # Draw the text using bitmap characters
-                corner_text = str(i)
-                for c in corner_text:
-                    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(c))
-                    
-                glTranslatef(-corner_pos[0], -corner_pos[1], -corner_pos[2])
-                
-                glEnable(GL_LIGHTING)
-                glPopMatrix()
-
-            # Disable lighting again for the axes
-            glDisable(GL_LIGHTING)
+            # Draw cube
+            glBindVertexArray(self.cube_vao)
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, None)
+            glBindVertexArray(0)
             
+            # Draw coordinate vectors
+            self.simple_shader.use()
             
-            # Re-enable depth testing for other rendering
-            glEnable(GL_DEPTH_TEST)
-            glEnable(GL_LIGHTING)
+            # Set matrices
+            self.simple_shader.set_uniform_matrix4fv("view", view_matrix)
+            self.simple_shader.set_uniform_matrix4fv("projection", projection_matrix)
             
-            glPopMatrix()
+            # Create model matrix for the normal vector
+            model_matrix = np.identity(4, dtype=np.float32)
+            # Apply translation
+            model_matrix[0, 3] = pos[0]
+            model_matrix[1, 3] = pos[1]
+            model_matrix[2, 3] = pos[2]
+            # Apply rotation to align with normal
+            rotation_matrix = self._create_rotation_matrix_from_vectors(np.array([0, 0, 1]), norm)
+            model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
+            # Apply scale
+            scale_matrix = pyrr.matrix44.create_from_scale([0.2, 0.2, 0.2])
+            model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
+            
+            # Set model matrix
+            self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
+            
+            # Draw normal vector (blue)
+            self.simple_shader.set_uniform_3fv("color", np.array([0.0, 0.0, 1.0], dtype=np.float32))
+            glBindVertexArray(self.arrow_vao)
+            glDrawArrays(GL_LINES, 0, 2)  # Draw line part
+            glDrawArrays(GL_TRIANGLE_FAN, 2, 10)  # Draw cone part
+            glBindVertexArray(0)
+            
+            # Create model matrix for the tangent vector
+            model_matrix = np.identity(4, dtype=np.float32)
+            # Apply translation
+            model_matrix[0, 3] = pos[0]
+            model_matrix[1, 3] = pos[1]
+            model_matrix[2, 3] = pos[2]
+            # Apply rotation to align with tangent
+            rotation_matrix = self._create_rotation_matrix_from_vectors(np.array([0, 0, 1]), tangent)
+            model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
+            # Apply scale
+            scale_matrix = pyrr.matrix44.create_from_scale([0.2, 0.2, 0.2])
+            model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
+            
+            # Set model matrix
+            self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
+            
+            # Draw tangent vector (red)
+            self.simple_shader.set_uniform_3fv("color", np.array([1.0, 0.0, 0.0], dtype=np.float32))
+            glBindVertexArray(self.arrow_vao)
+            glDrawArrays(GL_LINES, 0, 2)  # Draw line part
+            glDrawArrays(GL_TRIANGLE_FAN, 2, 10)  # Draw cone part
+            glBindVertexArray(0)
+            
+            # Create model matrix for the bitangent vector
+            model_matrix = np.identity(4, dtype=np.float32)
+            # Apply translation
+            model_matrix[0, 3] = pos[0]
+            model_matrix[1, 3] = pos[1]
+            model_matrix[2, 3] = pos[2]
+            # Apply rotation to align with bitangent
+            rotation_matrix = self._create_rotation_matrix_from_vectors(np.array([0, 0, 1]), bitangent)
+            model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
+            # Apply scale
+            scale_matrix = pyrr.matrix44.create_from_scale([0.2, 0.2, 0.2])
+            model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
+            
+            # Set model matrix
+            self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
+            
+            # Draw bitangent vector (green)
+            self.simple_shader.set_uniform_3fv("color", np.array([0.0, 1.0, 0.0], dtype=np.float32))
+            glBindVertexArray(self.arrow_vao)
+            glDrawArrays(GL_LINES, 0, 2)  # Draw line part
+            glDrawArrays(GL_TRIANGLE_FAN, 2, 10)  # Draw cone part
+            glBindVertexArray(0)
     
-    # def _draw_cameras(self):
-    #     """
-    #     Draw the camera positions and view frustums.
-    #     """
-        
-    #     for timestamp, pose in self.camera_poses.items():
-    #         # Extract camera position from the pose matrix
-    #         # The camera position is the negative of the translation vector
-    #         # transformed by the rotation matrix
-    #         rotation = pose[:3, :3]
-    #         translation = pose[:3, 3]
-    #         camera_pos = -np.dot(rotation.T, translation)
-            
-    #         glPushMatrix()
-            
-    #         # Translate to camera position
-    #         glTranslatef(camera_pos[0], camera_pos[1], camera_pos[2])
-            
-    #         # Apply camera orientation
-    #         # The rotation matrix in the pose is the inverse of the camera orientation
-    #         camera_orientation = rotation.T
-    #         orientation_matrix = np.eye(4)
-    #         orientation_matrix[:3, :3] = camera_orientation
-    #         glMultMatrixf(orientation_matrix.flatten('F'))
-            
-    #         # Draw camera as a small pyramid
-    #         glDisable(GL_LIGHTING)
-            
-    #         # Camera body (cyan)
-    #         glColor3f(0.0, 0.8, 0.8)
-            
-    #         # Draw camera frustum
-    #         glBegin(GL_LINES)
-    #         # Front face
-    #         glVertex3f(0, 0, 0)
-    #         glVertex3f(0.1, 0.1, -0.2)
-            
-    #         glVertex3f(0, 0, 0)
-    #         glVertex3f(-0.1, 0.1, -0.2)
-            
-    #         glVertex3f(0, 0, 0)
-    #         glVertex3f(-0.1, -0.1, -0.2)
-            
-    #         glVertex3f(0, 0, 0)
-    #         glVertex3f(0.1, -0.1, -0.2)
-            
-    #         # Back face
-    #         glVertex3f(0.1, 0.1, -0.2)
-    #         glVertex3f(-0.1, 0.1, -0.2)
-            
-    #         glVertex3f(-0.1, 0.1, -0.2)
-    #         glVertex3f(-0.1, -0.1, -0.2)
-            
-    #         glVertex3f(-0.1, -0.1, -0.2)
-    #         glVertex3f(0.1, -0.1, -0.2)
-            
-    #         glVertex3f(0.1, -0.1, -0.2)
-    #         glVertex3f(0.1, 0.1, -0.2)
-    #         glEnd()
-            
-    #         # Draw viewing direction
-    #         glColor3f(1.0, 1.0, 1.0)
-    #         glBegin(GL_LINES)
-    #         glVertex3f(0, 0, 0)
-    #         glVertex3f(0, 0, -0.3)
-    #         glEnd()
-            
-    #         glEnable(GL_LIGHTING)
-            
-    #         glPopMatrix()
-    def _draw_cameras(self):
+    def _create_rotation_matrix_from_vectors(self, source, target):
         """
-        Draw the camera positions and view frustums with sequential numbering based on timestamps.
-        """
+        Create a rotation matrix that rotates from source vector to target vector.
         
+        Args:
+            source: Source vector
+            target: Target vector
+            
+        Returns:
+            4x4 rotation matrix
+        """
+        source = source / np.linalg.norm(source)
+        target = target / np.linalg.norm(target)
+        
+        # Calculate the rotation axis
+        axis = np.cross(source, target)
+        axis_length = np.linalg.norm(axis)
+        
+        if axis_length < 1e-6:
+            # Vectors are parallel
+            if np.dot(source, target) > 0:
+                # Same direction
+                return np.identity(4, dtype=np.float32)
+            else:
+                # Opposite direction
+                # Find a perpendicular vector to rotate around
+                if abs(source[0]) < abs(source[1]):
+                    if abs(source[0]) < abs(source[2]):
+                        axis = np.array([1, 0, 0])
+                    else:
+                        axis = np.array([0, 0, 1])
+                else:
+                    if abs(source[1]) < abs(source[2]):
+                        axis = np.array([0, 1, 0])
+                    else:
+                        axis = np.array([0, 0, 1])
+                axis = np.cross(source, axis)
+                axis = axis / np.linalg.norm(axis)
+                angle = np.pi
+        else:
+            # Normalize the axis
+            axis = axis / axis_length
+            # Calculate the rotation angle
+            angle = np.arccos(np.dot(source, target))
+        
+        # Create the rotation matrix
+        rotation_matrix = pyrr.matrix44.create_from_axis_rotation(axis, angle)
+        return rotation_matrix
+
+    def _draw_cameras(self, view_matrix, projection_matrix):
+        """
+        Draw the camera positions and view frustums with sequential numbering.
+        
+        Args:
+            view_matrix: View matrix
+            projection_matrix: Projection matrix
+        """
         # Sort timestamps to ensure cameras are numbered in chronological order
         sorted_timestamps = sorted(self.camera_poses.keys())
         
         # Draw each camera in timestamp order
         for i, timestamp in enumerate(sorted_timestamps):
             pose = self.camera_poses[timestamp]
-
+            
             # Extract camera position from the pose matrix
             rotation = pose[:3, :3]
             translation = pose[:3, 3]
-            # camera_pos = -np.dot(rotation.T, translation)
-            camera_pos = translation       
-                 
-            logger.log(Logger.DEBUG, f"pose{str(int(pd.Timestamp(timestamp).timestamp()))} in renderer :{translation}, {rotation}")
+            camera_pos = translation
+            logger.log(Logger.DEBUG, f"Camera {i}: Position: {camera_pos}, Rotation: {rotation}")
             
+            # Use simple shader for drawing the camera frustum
+            self.simple_shader.use()
             
-            glPushMatrix()      
-            camera_orientation = rotation
-            orientation_matrix = np.eye(4)
-            orientation_matrix[:3, :3] = camera_orientation
-
-            glMultMatrixf(orientation_matrix.flatten('F'))
-            # glLoadIdentity()
+            # Create model matrix for the camera
+            # In OpenGL, transformations are applied in reverse order
+            # First create translation matrix
+            # translation_matrix = pyrr.matrix44.create_from_translation(camera_pos)
             
-            # Translate to camera position
-            glTranslatef(camera_pos[0], camera_pos[1], camera_pos[2])
-
+            # # Create rotation matrix from the camera orientation
+            # rotation_matrix = np.identity(4, dtype=np.float32)
+            # rotation_matrix[:3, :3] = rotation
             
-            # Apply camera orientation
-            # camera_orientation = rotation.T
+            # # Combine transformations: first rotate, then translate
+            # model_matrix = pyrr.matrix44.multiply(translation_matrix, rotation_matrix)
             
-            m = glGetFloatv(GL_MODELVIEW_MATRIX)
+            model_matrix = pose.T
             
-            logger.log(Logger.DEBUG, np.array(m).reshape((4, 4)).T)
-
-
-            # Draw camera as a small pyramid
-            glDisable(GL_LIGHTING)
+            # Log the model matrix for debugging
+            logger.log(Logger.DEBUG, f"Camera {i} model matrix:\n{model_matrix}")
             
-            # Camera body (cyan)
-            glColor3f(0.0, 0.8, 0.8)
+            # Set matrices
+            self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
+            self.simple_shader.set_uniform_matrix4fv("view", view_matrix)
+            self.simple_shader.set_uniform_matrix4fv("projection", projection_matrix)
             
-            # Draw camera frustum
-            glBegin(GL_LINES)
-            # Front face
-            glVertex3f(0, 0, 0)
-            glVertex3f(0.1, 0.1, -0.2)
+            # Draw camera frustum (cyan)
+            self.simple_shader.set_uniform_3fv("color", np.array([0.0, 0.8, 0.8], dtype=np.float32))
             
-            glVertex3f(0, 0, 0)
-            glVertex3f(-0.1, 0.1, -0.2)
+            # Create and draw camera frustum lines
+            # The camera's local coordinate system has:
+            # - Z axis pointing forward (viewing direction)
+            # - Y axis pointing up
+            # - X axis pointing right
+            vertices = np.array([
+                # Front face (at camera position)
+                0, 0, 0,
+                0.1, 0.1, 0.2,  # Changed to positive Z for forward direction
+                
+                0, 0, 0,
+                -0.1, 0.1, 0.2,
+                
+                0, 0, 0,
+                -0.1, -0.1, 0.2,
+                
+                0, 0, 0,
+                0.1, -0.1, 0.2,
+                
+                # Back face
+                0.1, 0.1, 0.2,
+                -0.1, 0.1, 0.2,
+                
+                -0.1, 0.1, 0.2,
+                -0.1, -0.1, 0.2,
+                
+                -0.1, -0.1, 0.2,
+                0.1, -0.1, 0.2,
+                
+                0.1, -0.1, 0.2,
+                0.1, 0.1, 0.2,
+                
+                # Viewing direction
+                0, 0, 0,
+                0, 0, 0.3  # Changed to positive Z for forward direction
+            ], dtype=np.float32)
             
-            glVertex3f(0, 0, 0)
-            glVertex3f(-0.1, -0.1, -0.2)
+            # Create temporary VAO for the frustum
+            vao = glGenVertexArrays(1)
+            glBindVertexArray(vao)
             
-            glVertex3f(0, 0, 0)
-            glVertex3f(0.1, -0.1, -0.2)
+            # Create VBO for vertices
+            vbo = glGenBuffers(1)
+            glBindBuffer(GL_ARRAY_BUFFER, vbo)
+            glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+            glEnableVertexAttribArray(0)
             
-            # Back face
-            glVertex3f(0.1, 0.1, -0.2)
-            glVertex3f(-0.1, 0.1, -0.2)
+            # Draw lines
+            glDrawArrays(GL_LINES, 0, len(vertices) // 3)
             
-            glVertex3f(-0.1, 0.1, -0.2)
-            glVertex3f(-0.1, -0.1, -0.2)
-            
-            glVertex3f(-0.1, -0.1, -0.2)
-            glVertex3f(0.1, -0.1, -0.2)
-            
-            glVertex3f(0.1, -0.1, -0.2)
-            glVertex3f(0.1, 0.1, -0.2)
-            glEnd()
-            
-            # Draw viewing direction
-            glColor3f(1.0, 1.0, 1.0)
-            glBegin(GL_LINES)
-            glVertex3f(0, 0, 0)
-            glVertex3f(0, 0, -0.3)
-            glEnd()
+            # Clean up
+            glDeleteVertexArrays(1, [vao])
+            glDeleteBuffers(1, [vbo])
             
             # Draw camera number at frustum position
-            glColor3f(1.0, 1.0, 0.0)  # Yellow text for visibility
-            # Position the text at the center of the back face of the frustum
-            glRasterPos3f(0, 0, -0.2)
+            # For simplicity, we'll use a timestamp-based identifier
+            # In a real application, you might want to use a more user-friendly identifier
+            camera_id = str(pd.Timestamp(timestamp).timestamp())
             
-            # Draw the camera index number (1-based for user readability)
-            camera_number = str(pd.Timestamp(timestamp).timestamp())
-            for c in camera_number:
+            # This part is tricky with modern OpenGL
+            # For text rendering, we'll use the legacy OpenGL functions
+            # In a real application, you might want to use a proper text rendering library
+            glUseProgram(0)  # Disable shaders
+            glMatrixMode(GL_PROJECTION)
+            glPushMatrix()
+            glLoadMatrixf(projection_matrix.flatten('F'))
+            glMatrixMode(GL_MODELVIEW)
+            glPushMatrix()
+            # Use the same model matrix as for the frustum
+            combined_matrix = pyrr.matrix44.multiply(view_matrix, model_matrix)
+            glLoadMatrixf(combined_matrix.flatten('F'))
+            
+            glColor3f(1.0, 1.0, 0.0)  # Yellow text for visibility
+            glRasterPos3f(0, 0, 0.2)  # Position the text at the center of the back face (positive Z)
+            
+            for c in camera_id:
                 glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(c))
             
-            glEnable(GL_LIGHTING)
-            
             glPopMatrix()
+            glMatrixMode(GL_PROJECTION)
+            glPopMatrix()
+            glMatrixMode(GL_MODELVIEW)
+            
+            # Re-enable shaders
+            self.simple_shader.use()
     
-    
-    def _draw_contents(self):
+    def _draw_contents(self, view_matrix, projection_matrix, eye_pos):
         """
-        Draw the MR contents.
+        Draw the MR contents using shaders.
+        
+        Args:
+            view_matrix: View matrix
+            projection_matrix: Projection matrix
+            eye_pos: Camera position
         """
         # Use the first scene if available
         if not self.scenes:
@@ -741,53 +1259,58 @@ class VisualizeModelRender:
                 if model_path not in self.model_cache:
                     continue
                 
-                glPushMatrix()
+                # Use shader
+                self.shader.use()
+                
+                # Create model matrix for the object
+                model_matrix = np.identity(4, dtype=np.float32)
                 
                 # Apply object transform
                 if 'position' in obj_data and 'rotation' in obj_data:
                     # Apply position
                     position = obj_data['position']
-                    glTranslatef(position['x'], position['y'], position['z'])
+                    translation_matrix = pyrr.matrix44.create_from_translation(
+                        [position['x'], position['y'], position['z']]
+                    )
+                    model_matrix = pyrr.matrix44.multiply(model_matrix, translation_matrix)
                     
                     # Apply rotation
                     rotation = obj_data['rotation']
                     if 'w' in rotation:  # Quaternion
                         quat = pyrr.Quaternion([rotation['x'], rotation['y'], rotation['z'], rotation['w']])
-                        rotation_matrix = quat.matrix33
-                        glMultMatrixf(pyrr.matrix44.create_from_matrix33(rotation_matrix))
+                        rotation_matrix = pyrr.matrix44.create_from_quaternion(quat)
+                        model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
                     else:  # Euler angles
-                        glRotatef(rotation.get('x', 0), 1, 0, 0)
-                        glRotatef(rotation.get('y', 0), 0, 1, 0)
-                        glRotatef(rotation.get('z', 0), 0, 0, 1)
+                        rotation_x = pyrr.matrix44.create_from_x_rotation(np.radians(rotation.get('x', 0)))
+                        rotation_y = pyrr.matrix44.create_from_y_rotation(np.radians(rotation.get('y', 0)))
+                        rotation_z = pyrr.matrix44.create_from_z_rotation(np.radians(rotation.get('z', 0)))
+                        rotation_matrix = pyrr.matrix44.multiply(rotation_x, rotation_y)
+                        rotation_matrix = pyrr.matrix44.multiply(rotation_matrix, rotation_z)
+                        model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
                     
                     # Apply scale if provided
                     if 'scale' in obj_data:
                         scale = obj_data['scale']
-                        glScalef(scale.get('x', 1.0), scale.get('y', 1.0), scale.get('z', 1.0))
+                        scale_matrix = pyrr.matrix44.create_from_scale(
+                            [scale.get('x', 1.0), scale.get('y', 1.0), scale.get('z', 1.0)]
+                        )
+                        model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
                 
-                # Set material properties for the content model
-                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [0.0, 0.8, 0.0, 1.0])  # Green for MR contents
-                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
+                # Set matrices
+                self.shader.set_uniform_matrix4fv("model", model_matrix)
+                self.shader.set_uniform_matrix4fv("view", view_matrix)
+                self.shader.set_uniform_matrix4fv("projection", projection_matrix)
                 
-                # Draw the model
+                # Set lighting properties
+                self.shader.set_uniform_3fv("lightPos", self.light_pos)
+                self.shader.set_uniform_3fv("viewPos", eye_pos)
+                self.shader.set_uniform_3fv("lightColor", self.light_color)
+                self.shader.set_uniform_3fv("objectColor", np.array([0.0, 0.8, 0.0], dtype=np.float32))  # Green for MR contents
+                self.shader.set_uniform_1f("shininess", 100.0)
+                
+                # Draw model
                 model = self.model_cache[model_path]
-                for mesh in model.meshes:
-                    glBegin(GL_TRIANGLES)
-                    for face in mesh.faces:
-                        for vertex_idx in face:
-                            # Set normal
-                            if mesh.normals.size > 0:
-                                normal = mesh.normals[vertex_idx]
-                                glNormal3f(normal[0], normal[1], normal[2])
-                            
-                            # Set vertex
-                            vertex = mesh.vertices[vertex_idx]
-                            glVertex3f(vertex[0], vertex[1], vertex[2])
-                    glEnd()
-                
-                glPopMatrix()
+                model.draw()
     
     def _load_content_model(self, model_path: str):
         """
@@ -835,17 +1358,33 @@ class VisualizeModelRender:
             )
             
             # Use with statement to properly handle the context manager
-            with pyassimp.load(model_path, processing=processing_flags) as model:
-                if not model or not model.meshes:
+            with pyassimp.load(model_path, processing=processing_flags) as scene:
+                if not scene or not scene.meshes:
                     logger.log(Logger.ERROR, f"No meshes found in {model_path}")
                     return
                 
+                # Create a model from the scene
+                model = Model()
+                
+                # Process each mesh
+                for mesh in scene.meshes:
+                    # Extract vertices, normals, and indices
+                    vertices = mesh.vertices.astype(np.float32)
+                    normals = mesh.normals.astype(np.float32)
+                    
+                    # Convert faces to indices
+                    indices = np.array([idx for face in mesh.faces for idx in face], dtype=np.uint32)
+                    
+                    # Create mesh
+                    mesh_obj = Mesh(vertices, normals, indices)
+                    model.add_mesh(mesh_obj)
+                
                 # Store the model for rendering
                 self.model_cache[model_path] = model
-                logger.log(Logger.SYSTEM, f"Content model loaded with {len(model.meshes)} meshes")
+                logger.log(Logger.SYSTEM, f"Content model loaded with {len(scene.meshes)} meshes")
         except Exception as e:
             logger.log(Logger.ERROR, f"Error loading content model: {e}")
-    
+
     def _reshape_callback(self, width, height):
         """
         GLUT reshape callback function.
@@ -931,7 +1470,7 @@ class VisualizeModelRender:
             self.rotation_x = 0.0
             self.rotation_y = 0.0
             self.zoom = 1.0
-        elif key == 'q' or key == 27:  # ESC key
+        elif key == 'q' or key == chr(27):  # ESC key
             # Exit the program
             glutLeaveMainLoop()
         

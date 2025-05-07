@@ -11,10 +11,10 @@ from Logger import Logger, logger
 
 # Parameters
 # Path to the 3D scan model of the scene
-scene_model_path = os.path.join('..', 'LocalData', 'SceneModel', 'on_the_desk.fbx')
+scene_model_path = os.path.join('..', 'LocalData', 'DepthIMUData2', 'Env_3DModels', 'on_the_desk.fbx')
 
 # Directory containing frame and depth images
-frames_dir = os.path.join('..', 'LocalData', 'DepthIMUData2', 'fastslow')
+frames_dir = os.path.join('..', 'LocalData', 'DepthIMUData2', 'slow')
 
 # IMU data file (CSV)
 imu_file = os.path.join(frames_dir, 'imu.csv')

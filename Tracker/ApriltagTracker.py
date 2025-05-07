@@ -32,9 +32,9 @@ class ApriltagTracker(Tracker):
         # Initialize the AprilTag detector
         self.detector = apriltags.Detector(
             families=tag_family,  # Default tag family
-            nthreads=1,           # Number of threads
-            quad_decimate=1.0,    # Image decimation factor
-            quad_sigma=0.0,       # Gaussian blur sigma
+            nthreads=4,           # スレッド数を増やす
+            quad_decimate=0.5,    # 画像を縮小して高速化しつつ、過度な縮小を避ける
+            quad_sigma=0.8,       # 画像にガウシアンをかけてコントラストを向上
             refine_edges=1,       # Refine edges
             decode_sharpening=0.25,  # Sharpening factor
             debug=0               # Debug level
@@ -195,9 +195,9 @@ class ApriltagTracker(Tracker):
             image_points, 
             self.camera_matrix, 
             self.dist_coeffs,
-            iterationsCount=100,           # RANSAC iterations
-            reprojectionError=8.0,         # Maximum allowed reprojection error (pixels)
-            confidence=0.99,               # Confidence probability
+            iterationsCount=200,        # ランサックの試行回数を増やす
+            reprojectionError=3.0,      # 再投影誤差の上限を狭める
+            confidence=0.999,           # RANSAC の信頼度を上げる
             flags=cv2.SOLVEPNP_ITERATIVE  # Same flag as before
         )
         
@@ -209,49 +209,50 @@ class ApriltagTracker(Tracker):
         ##### for debgug: visualize_points #####
         
         # 画像のコピーを作成してデバッグ用の可視化を行う
-        debug_image = frame.rgb.copy()
+        # debug_image = frame.rgb.copy()
         
-        # グレースケールの場合はカラー画像に変換
-        if debug_image.ndim == 2:
-            debug_image = cv2.cvtColor(debug_image, cv2.COLOR_GRAY2BGR)
+        # # グレースケールの場合はカラー画像に変換
+        # if debug_image.ndim == 2:
+        #     debug_image = cv2.cvtColor(debug_image, cv2.COLOR_GRAY2BGR)
             
-        # 検出されたポイントを描画
-        for i, point in enumerate(image_points):
-            # 点を赤い円で表示
-            cv2.circle(debug_image, (int(point[0]), int(point[1])), 5, (0, 0, 255), -1)
-            # ポイント番号を表示
-            cv2.putText(debug_image, str(i), (int(point[0]) + 5, int(point[1]) + 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        # # 検出されたポイントを描画
+        # for i, point in enumerate(image_points):
+        #     # 点を赤い円で表示
+        #     cv2.circle(debug_image, (int(point[0]), int(point[1])), 5, (0, 0, 255), -1)
+        #     # ポイント番号を表示
+        #     cv2.putText(debug_image, str(i), (int(point[0]) + 5, int(point[1]) + 5),
+        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
-        # AprilTagごとに4つの点を線で結ぶ
-        for i in range(0, len(image_points), 4):
-            if i + 3 < len(image_points):
-                quad_points = image_points[i:i+4]
+        # # AprilTagごとに4つの点を線で結ぶ
+        # for i in range(0, len(image_points), 4):
+        #     if i + 3 < len(image_points):
+        #         quad_points = image_points[i:i+4]
                 
-                # 四角形の輪郭を青い線で描画
-                for j in range(4):
-                    pt1 = (int(quad_points[j][0]), int(quad_points[j][1]))
-                    pt2 = (int(quad_points[(j+1)%4][0]), int(quad_points[(j+1)%4][1]))
-                    cv2.line(debug_image, pt1, pt2, (255, 0, 0), 2)
+        #         # 四角形の輪郭を青い線で描画
+        #         for j in range(4):
+        #             pt1 = (int(quad_points[j][0]), int(quad_points[j][1]))
+        #             pt2 = (int(quad_points[(j+1)%4][0]), int(quad_points[(j+1)%4][1]))
+        #             cv2.line(debug_image, pt1, pt2, (255, 0, 0), 2)
                 
-                # タグの中心を計算
-                center_x = int(sum(p[0] for p in quad_points) / 4)
-                center_y = int(sum(p[1] for p in quad_points) / 4)
-                tag_index = i // 4
+        #         # タグの中心を計算
+        #         center_x = int(sum(p[0] for p in quad_points) / 4)
+        #         center_y = int(sum(p[1] for p in quad_points) / 4)
+        #         tag_index = i // 4
                 
-                # 検出されたタグ番号を表示
-                cv2.putText(debug_image, f"Tag {tag_index}", (center_x, center_y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+        #         # 検出されたタグ番号を表示
+        #         cv2.putText(debug_image, f"Tag {tag_index}", (center_x, center_y),
+        #                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
 
+        # Comment out GUI visualization to avoid Qt/X11 display issues
         # デバッグ画像を表示
-        cv2.imshow("AprilTag Detection", debug_image)
-        cv2.waitKey(1)  # 1ms待機（画像を表示するために必要）
+        # cv2.imshow("AprilTag Detection", debug_image)
+        # cv2.waitKey(1)  # 1ms待機（画像を表示するために必要）
         
         # Visualize the PnP result
-        unix_time = str(int(pd.Timestamp(frame.timestamp).timestamp()))
-        print(unix_time[-3:])
-        if unix_time[-3:] == "463" or unix_time[-3:] == "476":
-            visualize_pnp_result(object_points, np.vstack([rvec, tvec]))
+        # unix_time = str(int(pd.Timestamp(frame.timestamp).timestamp()))
+        # print(unix_time[-3:])
+        # if unix_time[-3:] == "463" or unix_time[-3:] == "476":
+        #     visualize_pnp_result(object_points, np.vstack([rvec, tvec]), self.marker_positions)
         
         ####### end debug ########
         
@@ -262,34 +263,20 @@ class ApriltagTracker(Tracker):
         
         # Convert rotation vector to rotation matrix
         R, _ = cv2.Rodrigues(rvec)
+        t = -R.T @ tvec
         
         opencv_to_opengl = np.array([
-            [1.0,  0.0,  0.0, 0.0],
-            [0.0, -1.0,  0.0, 0.0],  # Flip Y axis
-            [0.0,  0.0, -1.0, 0.0],
-            [0.0,  0.0,  0.0, 1.0]# Flip Z axis
+            [1,  0,  0],
+            [0, -1,  0],
+            [0,  0, -1]
         ])
-
-        # Create the camera-to-world transformation in OpenCV coordinates
-        # T_camera_world_opencv = np.eye(4)
-        # T_camera_world_opencv[:3, :3] = R.T @ opencv_to_opengl[:3, :3]
-        # tvec_opengl = (-R.T @ tvec).flatten()
-        # # tvec_opengl[1:] *= -1
-        # T_camera_world_opencv[:3, 3] = tvec_opengl
+        R = opencv_to_opengl @ R
+        t = opencv_to_opengl @ t
+    
+        T = np.eye(4)
+        T[:3, :3] = R.T  # 回転は逆
+        T[:3, 3] = t.flatten()  # 並進
         
-        T_camera_world_opencv = np.eye(4)
-        T_camera_world_opencv[:3, :3] = R.T 
-        tvec_opengl = (-R.T @ tvec).flatten()
-        T_camera_world_opencv[:3, 3] = tvec_opengl
+        self.last_valid_pose = T
         
-        # Apply the coordinate transformation to the rotation matrix
-        # T_camera_opengl = T_camera_world_opencv @ opencv_to_opengl
-
-        # Store this pose as the last valid pose
-        self.last_valid_pose = T_camera_world_opencv
-        
-        return T_camera_world_opencv
-        
-        # self.last_valid_pose = T_camera_world_opencv
-        
-        # return T_camera_world_opencv
+        return T                # self.last_valid_pose = T_camera_world_opencv                # return T_camera_world_opencv

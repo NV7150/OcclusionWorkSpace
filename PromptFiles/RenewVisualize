@@ -1,0 +1,5 @@
+In this system, I'm working on occlusion in MR. 
+Please refer BaseSsytem.md and PromptFiles/parameters, and VisualizeSystem.md first, and grasp the project.
+
+Actually, we using OpenGL, but it is too old expression.
+Please renew this kind of legacy coding in OpenGL to newer sharder-based program.
