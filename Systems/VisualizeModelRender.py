@@ -11,7 +11,20 @@ import pyassimp
 import pyassimp.postprocess
 from PIL import Image
 
-from Logger import logger, Logger
+# Import core interfaces
+from core.IRenderer import IRenderer
+from core.IModel import IModel
+from core.IScene import IScene
+
+# Import utilities
+from Utils.Logger import logger
+
+# Default shader paths (assuming they are in a 'shaders' directory relative to this script)
+DEFAULT_SHADER_DIR = os.path.join(os.path.dirname(__file__), "..", "Rendering", "shaders")
+DEFAULT_VERTEX_SHADER_PATH = os.path.join(DEFAULT_SHADER_DIR, "default.vert")
+DEFAULT_FRAGMENT_SHADER_PATH = os.path.join(DEFAULT_SHADER_DIR, "default.frag")
+DEFAULT_SIMPLE_VERTEX_SHADER_PATH = os.path.join(DEFAULT_SHADER_DIR, "simple.vert")
+DEFAULT_SIMPLE_FRAGMENT_SHADER_PATH = os.path.join(DEFAULT_SHADER_DIR, "simple.frag")
 
 
 class Shader:
@@ -243,101 +256,64 @@ class Model:
             mesh.delete()
 
 
-class VisualizeModelRender:
+class VisualizeModelRender(IRenderer):
     """
     VisualizeModelRender is responsible for rendering the MR scene visualization.
     It handles rendering the scene model, reference markers, camera positions, and MR contents.
     This implementation uses modern OpenGL with shaders and VBOs.
+    
+    Implements the IRenderer interface for consistent usage across the framework.
     """
     
     # Vertex shader source
-    VERTEX_SHADER = """
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
-    layout (location = 1) in vec3 aNormal;
-    
-    uniform mat4 model;
-    uniform mat4 view;
-    uniform mat4 projection;
-    
-    out vec3 FragPos;
-    out vec3 Normal;
-    
-    void main()
-    {
-        FragPos = vec3(model * vec4(aPos, 1.0));
-        Normal = mat3(transpose(inverse(model))) * aNormal;
-        gl_Position = projection * view * vec4(FragPos, 1.0);
-    }
-    """
+    # REMOVED - Now loaded from file
     
     # Fragment shader source
-    FRAGMENT_SHADER = """
-    #version 330 core
-    in vec3 FragPos;
-    in vec3 Normal;
-    
-    uniform vec3 lightPos;
-    uniform vec3 viewPos;
-    uniform vec3 lightColor;
-    uniform vec3 objectColor;
-    uniform float shininess;
-    
-    out vec4 FragColor;
-    
-    void main()
-    {
-        // Ambient
-        float ambientStrength = 0.2;
-        vec3 ambient = ambientStrength * lightColor;
-        
-        // Diffuse
-        vec3 norm = normalize(Normal);
-        vec3 lightDir = normalize(lightPos - FragPos);
-        float diff = max(dot(norm, lightDir), 0.0);
-        vec3 diffuse = diff * lightColor;
-        
-        // Specular
-        float specularStrength = 0.5;
-        vec3 viewDir = normalize(viewPos - FragPos);
-        vec3 reflectDir = reflect(-lightDir, norm);
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-        vec3 specular = specularStrength * spec * lightColor;
-        
-        // Result
-        vec3 result = (ambient + diffuse + specular) * objectColor;
-        FragColor = vec4(result, 1.0);
-    }
-    """
+    # REMOVED - Now loaded from file
     
     # Simple color shader for lines and basic shapes
-    SIMPLE_VERTEX_SHADER = """
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
+    # REMOVED - Now loaded from file
     
-    uniform mat4 model;
-    uniform mat4 view;
-    uniform mat4 projection;
-    
-    void main()
-    {
-        gl_Position = projection * view * model * vec4(aPos, 1.0);
-    }
-    """
-    
-    SIMPLE_FRAGMENT_SHADER = """
-    #version 330 core
-    uniform vec3 color;
-    
-    out vec4 FragColor;
-    
-    void main()
-    {
-        FragColor = vec4(color, 1.0);
-    }
-    """
-    
-    def __init__(self):
+    def __init__(self,
+                 window_title: bytes = b"MR Scene Visualization",
+                 window_width: int = 1024,
+                 window_height: int = 768,
+                 camera_pos: np.ndarray = np.array([0.0, 0.0, 3.0], dtype=np.float32),
+                 camera_target: np.ndarray = np.array([0.0, 0.0, 0.0], dtype=np.float32),
+                 camera_up: np.ndarray = np.array([0.0, 1.0, 0.0], dtype=np.float32),
+                 light_pos: np.ndarray = np.array([1.0, 1.0, 2.0], dtype=np.float32),
+                 light_color: np.ndarray = np.array([1.0, 1.0, 1.0], dtype=np.float32),
+                 default_shader_paths: Tuple[str, str] = (DEFAULT_VERTEX_SHADER_PATH, DEFAULT_FRAGMENT_SHADER_PATH),
+                 simple_shader_paths: Tuple[str, str] = (DEFAULT_SIMPLE_VERTEX_SHADER_PATH, DEFAULT_SIMPLE_FRAGMENT_SHADER_PATH),
+                 fovy: float = 45.0,
+                 near_clip: float = 0.1,
+                 far_clip: float = 100.0,
+                 # Lighting and Material
+                 ambient_strength: float = 0.2,
+                 specular_strength: float = 0.5,
+                 default_shininess: float = 32.0,
+                 # Colors
+                 axes_colors: Tuple[np.ndarray, np.ndarray, np.ndarray] = (
+                     np.array([1.0, 0.0, 0.0], dtype=np.float32), # X-axis Red
+                     np.array([0.0, 1.0, 0.0], dtype=np.float32), # Y-axis Green
+                     np.array([0.0, 0.0, 1.0], dtype=np.float32)  # Z-axis Blue
+                 ),
+                 grid_color: np.ndarray = np.array([0.5, 0.5, 0.5], dtype=np.float32),
+                 marker_cube_color: np.ndarray = np.array([1.0, 1.0, 0.0], dtype=np.float32),
+                 marker_normal_color: np.ndarray = np.array([0.0, 0.0, 1.0], dtype=np.float32), # Blue
+                 marker_tangent_color: np.ndarray = np.array([1.0, 0.0, 0.0], dtype=np.float32), # Red
+                 marker_bitangent_color: np.ndarray = np.array([0.0, 1.0, 0.0], dtype=np.float32), # Green
+                 camera_frustum_color: np.ndarray = np.array([0.0, 0.8, 0.8], dtype=np.float32), # Cyan
+                 camera_text_color: Tuple[float, float, float] = (1.0, 1.0, 0.0), # Yellow
+                 content_color: np.ndarray = np.array([0.0, 0.8, 0.0], dtype=np.float32), # Green
+                 scene_model_color: np.ndarray = np.array([0.8, 0.8, 0.8], dtype=np.float32),
+                 # Scales
+                 marker_cube_scale: float = 0.05,
+                 marker_arrow_scale: float = 0.2,
+                 # Grid parameters
+                 grid_render_size: int = 5, # Renamed from grid_size to avoid conflict if used elsewhere
+                 grid_step_size: float = 0.2 # Renamed from grid_step
+                ):
         """
         Initialize the VisualizeModelRender.
         """
@@ -348,15 +324,43 @@ class VisualizeModelRender:
         self.scenes = {}
         
         # Window properties
-        self.window_width = 1024
-        self.window_height = 768
-        self.window_title = b"MR Scene Visualization"
+        self.window_width = window_width
+        self.window_height = window_height
+        self.window_title = window_title
         self.window_id = None
         
         # Camera properties
-        self.camera_pos = np.array([0.0, 0.0, 3.0], dtype=np.float32)
-        self.camera_target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-        self.camera_up = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+        self.camera_pos = camera_pos
+        self.camera_target = camera_target
+        self.camera_up = camera_up
+        self.fovy = fovy
+        self.near_clip = near_clip
+        self.far_clip = far_clip
+        
+        # Lighting and Material
+        self.ambient_strength = ambient_strength
+        self.specular_strength = specular_strength
+        self.default_shininess = default_shininess
+        
+        # Colors
+        self.axes_colors = axes_colors
+        self.grid_color = grid_color
+        self.marker_cube_color = marker_cube_color
+        self.marker_normal_color = marker_normal_color
+        self.marker_tangent_color = marker_tangent_color
+        self.marker_bitangent_color = marker_bitangent_color
+        self.camera_frustum_color = camera_frustum_color
+        self.camera_text_color = camera_text_color
+        self.content_color = content_color
+        self.scene_model_color = scene_model_color
+        
+        # Scales
+        self.marker_cube_scale = marker_cube_scale
+        self.marker_arrow_scale = marker_arrow_scale
+        
+        # Grid parameters
+        self.grid_render_size = grid_render_size
+        self.grid_step_size = grid_step_size
         
         # Mouse interaction
         self.mouse_x = 0
@@ -391,23 +395,56 @@ class VisualizeModelRender:
         # Shader programs
         self.shader = None
         self.simple_shader = None
+        self.default_shader_paths = default_shader_paths
+        self.simple_shader_paths = simple_shader_paths
         
-        # Geometry for basic shapes
+        # Geometry for basic shapes - store VBO/EBO handles for cleanup
         self.cube_vao = None
+        self.cube_vbo_vertices = None
+        self.cube_vbo_normals = None
+        self.cube_ebo = None
+        
         self.grid_vao = None
+        self.grid_vbo = None
+        
         self.axes_vao = None
+        self.axes_vbo = None
+        
         self.arrow_vao = None
+        self.arrow_vbo = None
         
         # Light properties
-        self.light_pos = np.array([1.0, 1.0, 2.0], dtype=np.float32)
-        self.light_color = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+        self.light_pos = light_pos
+        self.light_color = light_color
     
-    def initialize(self, scene_model_path: str):
+    def _load_shader_source(self, file_path: str) -> str:
+        """Helper function to load shader source from a file."""
+        if not os.path.exists(file_path):
+            logger.log(logger.ERROR, f"Shader file not found: {file_path}")
+            # Return a very basic fallback shader source to avoid crashing
+            if file_path.endswith(".vert"):
+                return """
+#version 330 core
+layout (location = 0) in vec3 aPos;
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+void main() { gl_Position = projection * view * model * vec4(aPos, 1.0); }
+"""
+            elif file_path.endswith(".frag"):
+                return """
+#version 330 core
+out vec4 FragColor;
+uniform vec3 objectColor;
+void main() { FragColor = vec4(objectColor, 1.0); }
+"""
+            return "" # Should not happen
+        with open(file_path, 'r') as f:
+            return f.read()
+
+    def initialize(self):
         """
-        Initialize the renderer with the scene model.
-        
-        Args:
-            scene_model_path: Path to the 3D scan model (.fbx) of the scene
+        Initialize the renderer.
         """
         # Initialize GLUT
         glutInit()
@@ -419,8 +456,13 @@ class VisualizeModelRender:
         glEnable(GL_DEPTH_TEST)
         
         # Initialize shaders
-        self.shader = Shader(self.VERTEX_SHADER, self.FRAGMENT_SHADER)
-        self.simple_shader = Shader(self.SIMPLE_VERTEX_SHADER, self.SIMPLE_FRAGMENT_SHADER)
+        vertex_source = self._load_shader_source(self.default_shader_paths[0])
+        fragment_source = self._load_shader_source(self.default_shader_paths[1])
+        self.shader = Shader(vertex_source, fragment_source)
+
+        simple_vertex_source = self._load_shader_source(self.simple_shader_paths[0])
+        simple_fragment_source = self._load_shader_source(self.simple_shader_paths[1])
+        self.simple_shader = Shader(simple_vertex_source, simple_fragment_source)
         
         # Set up callbacks
         glutDisplayFunc(self._display_callback)
@@ -433,10 +475,10 @@ class VisualizeModelRender:
         # Create basic geometry
         self._create_basic_geometry()
         
-        # Load scene model
-        self._load_scene_model(scene_model_path)
+        # Scene model is not loaded here by default, requires a specific call.
+        # self._load_scene_model(scene_model_path) 
         
-        logger.log(Logger.SYSTEM, "Renderer initialized with modern OpenGL shaders")
+        logger.log(logger.SYSTEM, "Renderer initialized with modern OpenGL shaders")
     
     def _create_basic_geometry(self):
         """
@@ -507,22 +549,22 @@ class VisualizeModelRender:
         glBindVertexArray(self.cube_vao)
         
         # Create VBO for vertices
-        vbo_vertices = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
+        self.cube_vbo_vertices = glGenBuffers(1) # Store handle
+        glBindBuffer(GL_ARRAY_BUFFER, self.cube_vbo_vertices)
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(0)
         
         # Create VBO for normals
-        vbo_normals = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
+        self.cube_vbo_normals = glGenBuffers(1) # Store handle
+        glBindBuffer(GL_ARRAY_BUFFER, self.cube_vbo_normals)
         glBufferData(GL_ARRAY_BUFFER, normals.nbytes, normals, GL_STATIC_DRAW)
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(1)
         
         # Create EBO for indices
-        ebo = glGenBuffers(1)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+        self.cube_ebo = glGenBuffers(1) # Store handle
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.cube_ebo)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL_STATIC_DRAW)
         
         # Unbind VAO
@@ -532,19 +574,20 @@ class VisualizeModelRender:
         """
         Create a grid VAO for the reference grid.
         """
-        grid_size = 5
-        grid_step = 0.2
+        # Use configurable grid parameters
+        grid_s = self.grid_render_size 
+        grid_st = self.grid_step_size
         vertices = []
         
         # Create grid lines
-        for i in range(-grid_size, grid_size + 1):
+        for i in range(-grid_s, grid_s + 1):
             # X lines
-            vertices.extend([i * grid_step, 0, -grid_size * grid_step])
-            vertices.extend([i * grid_step, 0, grid_size * grid_step])
+            vertices.extend([i * grid_st, 0, -grid_s * grid_st])
+            vertices.extend([i * grid_st, 0, grid_s * grid_st])
             
             # Z lines
-            vertices.extend([-grid_size * grid_step, 0, i * grid_step])
-            vertices.extend([grid_size * grid_step, 0, i * grid_step])
+            vertices.extend([-grid_s * grid_st, 0, i * grid_st])
+            vertices.extend([grid_s * grid_st, 0, i * grid_st])
         
         vertices = np.array(vertices, dtype=np.float32)
         
@@ -553,8 +596,8 @@ class VisualizeModelRender:
         glBindVertexArray(self.grid_vao)
         
         # Create VBO for vertices
-        vbo = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        self.grid_vbo = glGenBuffers(1) # Store handle
+        glBindBuffer(GL_ARRAY_BUFFER, self.grid_vbo)
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(0)
@@ -583,8 +626,8 @@ class VisualizeModelRender:
         glBindVertexArray(self.axes_vao)
         
         # Create VBO for vertices
-        vbo = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        self.axes_vbo = glGenBuffers(1) # Store handle
+        glBindBuffer(GL_ARRAY_BUFFER, self.axes_vbo)
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(0)
@@ -619,8 +662,8 @@ class VisualizeModelRender:
         glBindVertexArray(self.arrow_vao)
         
         # Create VBO for vertices
-        vbo = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        self.arrow_vbo = glGenBuffers(1) # Store handle
+        glBindBuffer(GL_ARRAY_BUFFER, self.arrow_vbo)
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(0)
@@ -635,7 +678,7 @@ class VisualizeModelRender:
         Args:
             model_path: Path to the model file
         """
-        logger.log(Logger.SYSTEM, f"Loading scene model from {model_path}")
+        logger.log(logger.SYSTEM, f"Loading scene model from {model_path}")
         
         try:
             # Use pyassimp to load the model
@@ -647,7 +690,7 @@ class VisualizeModelRender:
             # Use with statement to properly handle the context manager
             with pyassimp.load(model_path, processing=processing_flags) as scene:
                 if not scene or not scene.meshes:
-                    logger.log(Logger.ERROR, f"No meshes found in {model_path}")
+                    logger.log(logger.ERROR, f"No meshes found in {model_path}")
                     self._create_fallback_scene()
                     return
                 
@@ -668,17 +711,18 @@ class VisualizeModelRender:
                     model.add_mesh(mesh_obj)
                 
                 self.scene_model = model
-                logger.log(Logger.SYSTEM, f"Scene model loaded with {len(scene.meshes)} meshes")
+                logger.log(logger.SYSTEM, f"Scene model loaded with {len(scene.meshes)} meshes")
         except Exception as e:
-            logger.log(Logger.ERROR, f"Error loading scene model: {e}")
+            logger.log(logger.ERROR, f"Error loading scene model: {e}")
             self._create_fallback_scene()
     
     def _create_fallback_scene(self):
         """
         Create a fallback scene if the model loading fails.
         """
-        logger.log(Logger.WARNING, "Creating fallback scene")
-        # We'll create a simple grid as a fallback
+        logger.log(logger.WARNING, "Creating fallback scene")
+        # We'll create a simple grid as a fallback.
+        # For now, setting to None. A proper fallback might involve creating a default Model object.
         self.scene_model = None
     
     def setup_scene(self, marker_positions: Dict, camera_poses: Dict, models: Dict, scenes: Dict):
@@ -696,13 +740,13 @@ class VisualizeModelRender:
         self.models = models
         self.scenes = scenes
         
-        logger.log(Logger.SYSTEM, "Scene setup complete")
+        logger.log(logger.SYSTEM, "Scene setup complete")
     
     def start_render_loop(self):
         """
         Start the rendering loop.
         """
-        logger.log(Logger.SYSTEM, "Starting render loop")
+        logger.log(logger.SYSTEM, "Starting render loop")
         glutMainLoop()
     
     def set_camera_view(self, timestamp):
@@ -745,11 +789,12 @@ class VisualizeModelRender:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         # Set up the projection matrix
+        aspect_ratio = self.window_width / self.window_height if self.window_height > 0 else 1.0
         projection = pyrr.matrix44.create_perspective_projection(
-            fovy=45.0,
-            aspect=self.window_width / self.window_height,
-            near=0.1,
-            far=100.0
+            fovy=self.fovy,
+            aspect=aspect_ratio,
+            near=self.near_clip,
+            far=self.far_clip
         )
         
         # Set up the view matrix based on view mode
@@ -844,16 +889,16 @@ class VisualizeModelRender:
         self.simple_shader.set_uniform_matrix4fv("projection", projection_matrix)
         
         # Draw X axis (red)
-        self.simple_shader.set_uniform_3fv("color", np.array([1.0, 0.0, 0.0], dtype=np.float32))
+        self.simple_shader.set_uniform_3fv("color", self.axes_colors[0])
         glBindVertexArray(self.axes_vao)
         glDrawArrays(GL_LINES, 0, 2)
         
         # Draw Y axis (green)
-        self.simple_shader.set_uniform_3fv("color", np.array([0.0, 1.0, 0.0], dtype=np.float32))
+        self.simple_shader.set_uniform_3fv("color", self.axes_colors[1])
         glDrawArrays(GL_LINES, 2, 2)
         
         # Draw Z axis (blue)
-        self.simple_shader.set_uniform_3fv("color", np.array([0.0, 0.0, 1.0], dtype=np.float32))
+        self.simple_shader.set_uniform_3fv("color", self.axes_colors[2])
         glDrawArrays(GL_LINES, 4, 2)
         
         glBindVertexArray(0)
@@ -876,12 +921,12 @@ class VisualizeModelRender:
         self.simple_shader.set_uniform_matrix4fv("projection", projection_matrix)
         
         # Set color (gray)
-        self.simple_shader.set_uniform_3fv("color", np.array([0.5, 0.5, 0.5], dtype=np.float32))
+        self.simple_shader.set_uniform_3fv("color", self.grid_color)
         
         # Draw grid
         glBindVertexArray(self.grid_vao)
-        grid_size = 5
-        glDrawArrays(GL_LINES, 0, (grid_size * 2 + 1) * 4)
+        # Use configurable grid size for drawing count
+        glDrawArrays(GL_LINES, 0, (self.grid_render_size * 2 + 1) * 4)
         glBindVertexArray(0)
     
     def _draw_scene_model(self, view_matrix, projection_matrix, eye_pos):
@@ -909,8 +954,11 @@ class VisualizeModelRender:
         self.shader.set_uniform_3fv("lightPos", self.light_pos)
         self.shader.set_uniform_3fv("viewPos", eye_pos)
         self.shader.set_uniform_3fv("lightColor", self.light_color)
-        self.shader.set_uniform_3fv("objectColor", np.array([0.8, 0.8, 0.8], dtype=np.float32))
-        self.shader.set_uniform_1f("shininess", 32.0)
+        self.shader.set_uniform_3fv("objectColor", self.scene_model_color)
+        # Pass lighting parameters from config
+        self.shader.set_uniform_1f("ambientStrength", self.ambient_strength)
+        self.shader.set_uniform_1f("specularStrength", self.specular_strength)
+        self.shader.set_uniform_1f("shininess", self.default_shininess)
         
         # Draw model
         self.scene_model.draw()
@@ -945,7 +993,8 @@ class VisualizeModelRender:
             model_matrix[1, 3] = pos[1]
             model_matrix[2, 3] = pos[2]
             # Apply scale
-            scale_matrix = pyrr.matrix44.create_from_scale([0.05, 0.05, 0.05])
+            scale_val = self.marker_cube_scale
+            scale_matrix = pyrr.matrix44.create_from_scale([scale_val, scale_val, scale_val])
             model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
             
             # Set matrices
@@ -957,8 +1006,11 @@ class VisualizeModelRender:
             self.shader.set_uniform_3fv("lightPos", self.light_pos)
             self.shader.set_uniform_3fv("viewPos", eye_pos)
             self.shader.set_uniform_3fv("lightColor", self.light_color)
-            self.shader.set_uniform_3fv("objectColor", np.array([1.0, 1.0, 0.0], dtype=np.float32))
-            self.shader.set_uniform_1f("shininess", 100.0)
+            self.shader.set_uniform_3fv("objectColor", self.marker_cube_color)
+            self.shader.set_uniform_1f("shininess", self.default_shininess) # Use configured default
+            # Pass lighting parameters from config
+            self.shader.set_uniform_1f("ambientStrength", self.ambient_strength)
+            self.shader.set_uniform_1f("specularStrength", self.specular_strength)
             
             # Draw cube
             glBindVertexArray(self.cube_vao)
@@ -982,14 +1034,15 @@ class VisualizeModelRender:
             rotation_matrix = self._create_rotation_matrix_from_vectors(np.array([0, 0, 1]), norm)
             model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
             # Apply scale
-            scale_matrix = pyrr.matrix44.create_from_scale([0.2, 0.2, 0.2])
+            arrow_scale_val = self.marker_arrow_scale
+            scale_matrix = pyrr.matrix44.create_from_scale([arrow_scale_val, arrow_scale_val, arrow_scale_val])
             model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
             
             # Set model matrix
             self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
             
             # Draw normal vector (blue)
-            self.simple_shader.set_uniform_3fv("color", np.array([0.0, 0.0, 1.0], dtype=np.float32))
+            self.simple_shader.set_uniform_3fv("color", self.marker_normal_color)
             glBindVertexArray(self.arrow_vao)
             glDrawArrays(GL_LINES, 0, 2)  # Draw line part
             glDrawArrays(GL_TRIANGLE_FAN, 2, 10)  # Draw cone part
@@ -1005,14 +1058,14 @@ class VisualizeModelRender:
             rotation_matrix = self._create_rotation_matrix_from_vectors(np.array([0, 0, 1]), tangent)
             model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
             # Apply scale
-            scale_matrix = pyrr.matrix44.create_from_scale([0.2, 0.2, 0.2])
+            scale_matrix = pyrr.matrix44.create_from_scale([arrow_scale_val, arrow_scale_val, arrow_scale_val])
             model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
             
             # Set model matrix
             self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
             
             # Draw tangent vector (red)
-            self.simple_shader.set_uniform_3fv("color", np.array([1.0, 0.0, 0.0], dtype=np.float32))
+            self.simple_shader.set_uniform_3fv("color", self.marker_tangent_color)
             glBindVertexArray(self.arrow_vao)
             glDrawArrays(GL_LINES, 0, 2)  # Draw line part
             glDrawArrays(GL_TRIANGLE_FAN, 2, 10)  # Draw cone part
@@ -1028,14 +1081,14 @@ class VisualizeModelRender:
             rotation_matrix = self._create_rotation_matrix_from_vectors(np.array([0, 0, 1]), bitangent)
             model_matrix = pyrr.matrix44.multiply(model_matrix, rotation_matrix)
             # Apply scale
-            scale_matrix = pyrr.matrix44.create_from_scale([0.2, 0.2, 0.2])
+            scale_matrix = pyrr.matrix44.create_from_scale([arrow_scale_val, arrow_scale_val, arrow_scale_val])
             model_matrix = pyrr.matrix44.multiply(model_matrix, scale_matrix)
             
             # Set model matrix
             self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
             
             # Draw bitangent vector (green)
-            self.simple_shader.set_uniform_3fv("color", np.array([0.0, 1.0, 0.0], dtype=np.float32))
+            self.simple_shader.set_uniform_3fv("color", self.marker_bitangent_color)
             glBindVertexArray(self.arrow_vao)
             glDrawArrays(GL_LINES, 0, 2)  # Draw line part
             glDrawArrays(GL_TRIANGLE_FAN, 2, 10)  # Draw cone part
@@ -1109,7 +1162,7 @@ class VisualizeModelRender:
             rotation = pose[:3, :3]
             translation = pose[:3, 3]
             camera_pos = translation
-            logger.log(Logger.DEBUG, f"Camera {i}: Position: {camera_pos}, Rotation: {rotation}")
+            logger.log(logger.DEBUG, f"Camera {i}: Position: {camera_pos}, Rotation: {rotation}")
             
             # Use simple shader for drawing the camera frustum
             self.simple_shader.use()
@@ -1129,7 +1182,7 @@ class VisualizeModelRender:
             model_matrix = pose.T
             
             # Log the model matrix for debugging
-            logger.log(Logger.DEBUG, f"Camera {i} model matrix:\n{model_matrix}")
+            logger.log(logger.DEBUG, f"Camera {i} model matrix:\n{model_matrix}")
             
             # Set matrices
             self.simple_shader.set_uniform_matrix4fv("model", model_matrix)
@@ -1137,7 +1190,7 @@ class VisualizeModelRender:
             self.simple_shader.set_uniform_matrix4fv("projection", projection_matrix)
             
             # Draw camera frustum (cyan)
-            self.simple_shader.set_uniform_3fv("color", np.array([0.0, 0.8, 0.8], dtype=np.float32))
+            self.simple_shader.set_uniform_3fv("color", self.camera_frustum_color)
             
             # Create and draw camera frustum lines
             # The camera's local coordinate system has:
@@ -1212,7 +1265,7 @@ class VisualizeModelRender:
             combined_matrix = pyrr.matrix44.multiply(view_matrix, model_matrix)
             glLoadMatrixf(combined_matrix.flatten('F'))
             
-            glColor3f(1.0, 1.0, 0.0)  # Yellow text for visibility
+            glColor3f(self.camera_text_color[0], self.camera_text_color[1], self.camera_text_color[2])  # Use configured Yellow text for visibility
             glRasterPos3f(0, 0, 0.2)  # Position the text at the center of the back face (positive Z)
             
             for c in camera_id:
@@ -1236,13 +1289,30 @@ class VisualizeModelRender:
             eye_pos: Camera position
         """
         # Use the first scene if available
-        if not self.scenes:
+        # self.scenes is expected to be the dictionary loaded from a single scene JSON file,
+        # which should contain an "objects" key.
+        if not self.scenes or not isinstance(self.scenes, dict):
+            logger.log(logger.DEBUG, "_draw_contents: self.scenes is empty or not a dict.")
             return
         
-        scene_name = next(iter(self.scenes))
-        scene_data = self.scenes[scene_name]
+        scene_objects = self.scenes.get("objects", {})
+        if not isinstance(scene_objects, dict):
+            logger.log(logger.WARNING, f"_draw_contents: 'objects' key in scene_data is not a dictionary or is missing.")
+            return
         
-        for obj_id, obj_data in scene_data.items():
+        if not scene_objects:
+            logger.log(logger.DEBUG, "_draw_contents: No objects found in scene_objects.")
+            return
+
+        # scene_name = next(iter(self.scenes)) # Old logic
+        # scene_data = self.scenes[scene_name] # Old logic
+        
+        # for obj_id, obj_data in scene_data.items(): # Old logic, scene_data could be a string
+        for obj_id, obj_data in scene_objects.items(): # New logic
+            if not isinstance(obj_data, dict):
+                logger.log(logger.WARNING, f"_draw_contents: Object data for '{obj_id}' is not a dictionary, skipping.")
+                continue
+
             if obj_id in self.models:
                 model_data = self.models[obj_id]
                 
@@ -1305,8 +1375,11 @@ class VisualizeModelRender:
                 self.shader.set_uniform_3fv("lightPos", self.light_pos)
                 self.shader.set_uniform_3fv("viewPos", eye_pos)
                 self.shader.set_uniform_3fv("lightColor", self.light_color)
-                self.shader.set_uniform_3fv("objectColor", np.array([0.0, 0.8, 0.0], dtype=np.float32))  # Green for MR contents
-                self.shader.set_uniform_1f("shininess", 100.0)
+                self.shader.set_uniform_3fv("objectColor", self.content_color)  # Use configured Green for MR contents
+                self.shader.set_uniform_1f("shininess", self.default_shininess) # Use configured default
+                # Pass lighting parameters from config
+                self.shader.set_uniform_1f("ambientStrength", self.ambient_strength)
+                self.shader.set_uniform_1f("specularStrength", self.specular_strength)
                 
                 # Draw model
                 model = self.model_cache[model_path]
@@ -1319,12 +1392,12 @@ class VisualizeModelRender:
         Args:
             model_path: Path to the model file
         """
-        logger.log(Logger.SYSTEM, f"Loading content model from {model_path}")
+        logger.log(logger.SYSTEM, f"Loading content model from {model_path}")
         
         try:
             # Check if file exists
             if not os.path.exists(model_path):
-                logger.log(Logger.WARNING, f"Model file does not exist: {model_path}")
+                logger.log(logger.WARNING, f"Model file does not exist: {model_path}")
                 
                 # Try different path variations
                 possible_paths = [
@@ -1340,15 +1413,15 @@ class VisualizeModelRender:
                 
                 found = False
                 for alt_path in possible_paths:
-                    logger.log(Logger.DEBUG, f"Trying alternative path: {alt_path}")
+                    logger.log(logger.DEBUG, f"Trying alternative path: {alt_path}")
                     if os.path.exists(alt_path):
-                        logger.log(Logger.DEBUG, f"Found model at alternative path: {alt_path}")
+                        logger.log(logger.DEBUG, f"Found model at alternative path: {alt_path}")
                         model_path = alt_path
                         found = True
                         break
                 
                 if not found:
-                    logger.log(Logger.ERROR, f"Could not find model file: {os.path.basename(model_path)}")
+                    logger.log(logger.ERROR, f"Could not find model file: {os.path.basename(model_path)}")
                     return
             
             # Use pyassimp to load the model
@@ -1360,7 +1433,7 @@ class VisualizeModelRender:
             # Use with statement to properly handle the context manager
             with pyassimp.load(model_path, processing=processing_flags) as scene:
                 if not scene or not scene.meshes:
-                    logger.log(Logger.ERROR, f"No meshes found in {model_path}")
+                    logger.log(logger.ERROR, f"No meshes found in {model_path}")
                     return
                 
                 # Create a model from the scene
@@ -1381,9 +1454,9 @@ class VisualizeModelRender:
                 
                 # Store the model for rendering
                 self.model_cache[model_path] = model
-                logger.log(Logger.SYSTEM, f"Content model loaded with {len(scene.meshes)} meshes")
+                logger.log(logger.SYSTEM, f"Content model loaded with {len(scene.meshes)} meshes")
         except Exception as e:
-            logger.log(Logger.ERROR, f"Error loading content model: {e}")
+            logger.log(logger.ERROR, f"Error loading content model: {e}")
 
     def _reshape_callback(self, width, height):
         """
@@ -1496,3 +1569,187 @@ class VisualizeModelRender:
             self.rotation_y += 5.0
         
         glutPostRedisplay()
+
+    # --- IRenderer Interface Methods ---
+
+    def render_frame(self, frame, models: Dict[str, Any], scene_data: Dict) -> np.ndarray:
+        """
+        Render a frame with the given models and scene data.
+        This visualization renderer primarily uses its internal state set via
+        setup_scene, set_camera_view etc. It will attempt to render
+        based on that. The arguments might be used in a future refactor
+        to more directly control what's rendered per call.
+
+        Returns:
+            Rendered image as a numpy array
+        """
+        logger.log(logger.SYSTEM, "render_frame called. For VisualizeModelRender, this triggers a redraw and returns the buffer.")
+        
+        # Ensure display callback updates the buffer
+        self._display_callback() # This will draw to the back buffer
+
+        # Read pixels from the front buffer (after swap in _display_callback)
+        # or back buffer if called mid-drawing cycle.
+        # For simplicity and consistency with typical GLUT loops, we'll assume _display_callback
+        # has been called and buffers swapped.
+        # Reading from GL_FRONT might be problematic if called out of sync.
+        # A more robust way would be to render to an FBO.
+        
+        glReadBuffer(GL_BACK) # Or GL_FRONT, depending on when this is called relative to glutSwapBuffers
+        image_buffer = glReadPixels(0, 0, self.window_width, self.window_height, GL_RGB, GL_UNSIGNED_BYTE)
+        image = np.frombuffer(image_buffer, dtype=np.uint8).reshape(self.window_height, self.window_width, 3)
+        
+        # OpenGL reads pixels from bottom-left, so flip it vertically
+        return np.flipud(image)
+
+    def render_depth(self, models: Dict[str, Any], scene_data: Dict, camera_matrix: np.ndarray) -> np.ndarray:
+        """
+        Render a depth map for the given models and scene data.
+        NOTE: This is a stub. A proper implementation would require a depth-specific
+        shader and rendering pass, possibly to an FBO.
+        
+        Args:
+            models: Dictionary mapping model IDs to model objects
+            scene_data: Dictionary containing scene description
+            camera_matrix: Camera matrix for the view (currently not used by this stub)
+            
+        Returns:
+            Depth map as a numpy array (currently a placeholder)
+        """
+        logger.log(logger.WARNING, "render_depth is not fully implemented. Returning a placeholder.")
+        # This would involve setting up the view from camera_matrix,
+        # rendering geometry (possibly with a specific depth shader),
+        # and then reading the depth buffer.
+        
+        # For now, let's trigger a normal display callback and try to read its depth.
+        # This is NOT a correct way to get a depth map for arbitrary camera_matrix.
+        self._display_callback()
+
+        depth_buffer = glReadPixels(0, 0, self.window_width, self.window_height, GL_DEPTH_COMPONENT, GL_FLOAT)
+        depth_image = np.frombuffer(depth_buffer, dtype=np.float32).reshape(self.window_height, self.window_width)
+        
+        # OpenGL reads pixels from bottom-left, so flip it vertically
+        return np.flipud(depth_image)
+
+    def set_camera(self, position: Tuple[float, float, float], 
+                  target: Tuple[float, float, float], 
+                  up: Tuple[float, float, float]) -> None:
+        """
+        Set the camera position, target, and up vector for free view.
+        
+        Args:
+            position: Camera position as (x, y, z)
+            target: Camera target as (x, y, z)
+            up: Camera up vector as (x, y, z)
+        """
+        self.camera_pos = np.array(position, dtype=np.float32)
+        self.camera_target = np.array(target, dtype=np.float32)
+        self.camera_up = np.array(up, dtype=np.float32)
+        self.view_mode = "free" # Assume setting camera this way implies free view
+        self.rotation_x = 0.0 # Reset rotation if camera is set directly
+        self.rotation_y = 0.0
+        self.zoom = 1.0
+        logger.log(logger.SYSTEM, f"Camera set to: pos={position}, target={target}, up={up}")
+        if self.window_id is not None: # Only if window exists
+             glutPostRedisplay()
+
+    def set_projection(self, fovy: float, aspect: float, near: float, far: float) -> None:
+        """
+        Set the projection parameters.
+        
+        Args:
+            fovy: Field of view in degrees
+            aspect: Aspect ratio (width / height) - Note: aspect is usually derived from window, but can be overridden.
+            near: Near clipping plane distance
+            far: Far clipping plane distance
+        """
+        self.fovy = fovy
+        # Aspect ratio will be recalculated based on window size in _display_callback,
+        # but we can store a preferred aspect if needed, or use the one passed.
+        # For now, fovy, near, far are stored. Aspect is dynamic.
+        self.near_clip = near
+        self.far_clip = far
+        logger.log(logger.SYSTEM, f"Projection set to: fovy={fovy}, near={near}, far={far}")
+        if self.window_id is not None: # Only if window exists
+            glutPostRedisplay()
+
+    def cleanup(self) -> None:
+        """
+        Clean up resources used by the renderer.
+        """
+        logger.log(logger.SYSTEM, "Cleaning up VisualizeModelRender resources.")
+        
+        # Delete scene model and cached models
+        if self.scene_model:
+            self.scene_model.delete()
+            self.scene_model = None
+        
+        for model_path in list(self.model_cache.keys()): # list() to avoid modification during iteration
+            model = self.model_cache.pop(model_path)
+            if model:
+                model.delete()
+        self.model_cache.clear()
+
+        # Delete basic geometry VAOs (VBOs/EBOs are typically associated with VAOs or deleted separately if not)
+        # Assuming these are simple VAOs with their buffers.
+        # A more robust cleanup would involve storing VBO/EBO handles and deleting them explicitly.
+        if self.cube_vao:
+            glDeleteVertexArrays(1, [self.cube_vao])
+            self.cube_vao = None
+        if self.cube_vbo_vertices:
+            glDeleteBuffers(1, [self.cube_vbo_vertices])
+            self.cube_vbo_vertices = None
+        if self.cube_vbo_normals:
+            glDeleteBuffers(1, [self.cube_vbo_normals])
+            self.cube_vbo_normals = None
+        if self.cube_ebo:
+            glDeleteBuffers(1, [self.cube_ebo])
+            self.cube_ebo = None
+            
+        if self.grid_vao:
+            glDeleteVertexArrays(1, [self.grid_vao])
+            self.grid_vao = None
+        if self.grid_vbo:
+            glDeleteBuffers(1, [self.grid_vbo])
+            self.grid_vbo = None
+            
+        if self.axes_vao:
+            glDeleteVertexArrays(1, [self.axes_vao])
+            self.axes_vao = None
+        if self.axes_vbo:
+            glDeleteBuffers(1, [self.axes_vbo])
+            self.axes_vbo = None
+            
+        if self.arrow_vao:
+            glDeleteVertexArrays(1, [self.arrow_vao])
+            self.arrow_vao = None
+        if self.arrow_vbo:
+            glDeleteBuffers(1, [self.arrow_vbo])
+            self.arrow_vbo = None
+
+        # Delete shaders
+        if self.shader and self.shader.program_id is not None:
+            glDeleteProgram(self.shader.program_id)
+            self.shader = None
+        if self.simple_shader and self.simple_shader.program_id is not None:
+            glDeleteProgram(self.simple_shader.program_id)
+            self.simple_shader = None
+            
+        # If GLUT window was created and we are responsible for it
+        if self.window_id is not None:
+            # This can sometimes cause issues if called from a thread not owning the context
+            # or if glutMainLoop is still technically running.
+            # glutDestroyWindow(self.window_id) # This might be too aggressive or cause errors.
+            # glutLeaveMainLoop() might be called by user (e.g. on 'q' press)
+            logger.log(logger.SYSTEM, "GLUT window cleanup would happen here if applicable (e.g., glutDestroyWindow).")
+            self.window_id = None
+        
+        logger.log(logger.SYSTEM, "VisualizeModelRender cleanup finished.")
+
+    def load_scene(self, scene_model_path: str):
+        """
+        Loads the main scene model.
+        """
+        self._load_scene_model(scene_model_path)
+        if self.window_id is not None:
+            glutPostRedisplay()

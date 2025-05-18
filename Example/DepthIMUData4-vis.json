@@ -1,0 +1,12 @@
+{
+    "command": "visualize",
+    "sceneModel": "../LocalData/DepthIMUData4/desk.fbx",
+    "framesDir": "../LocalData/DepthIMUData4/fast_3-2",
+    "markerFile": "../LocalData/DepthIMUData4/marker_poses_opengl.json",
+    "cameraMatrix": "../LocalData/camera_ipadpro.csv",
+    "renderObjDir": "../LocalData/Models",
+    "tagSize": 0.086,
+    "tagFamily": "tagStandard41h12",
+    "loader-type": "separated"
+  }
+  

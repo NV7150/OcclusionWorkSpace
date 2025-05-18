@@ -1,1 +1,12 @@
-I
+In this system, I'm working on occlusion in MR. 
+Please refer BaseSsytem.md and PromptFiles/parameters, and VisualizeSystem.md first, and grasp the project.
+
+I want to refactor the codes in Systems and Interfaces.
+I have a refactor plan specified in RefactorPlan.md, so please follow that and refactor the codes.
+You can move / copy / pasete whole the project, and change the archtecture.
+
+When the coding, please keep in mind these things:
+- Reduce the tokens, do not do a multiple changes in solo file. Then you might not waste my money.
+- Keep the code structure clean, divide each codes in private methods, make them readable.
+  - If you want to change the code structure for clean architecture, please ask me with your idea.
+- If you have any questions or need a more specification, please feel free to ask back to me.

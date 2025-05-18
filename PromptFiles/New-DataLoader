@@ -1,0 +1,24 @@
+I'm creating a MR rendering system. Please check README.md first to grasp the project.
+
+So, "UnifiedDataLoader" loads the legacy data style specified in PromptFiles/parameters.md.
+However, I have a new style dataset as follows:
+
+- ${dataset_path}
+  - depth   
+    - depth_{timestamp}.csv
+  - imu
+    - imu_data.csv
+  - rgb
+    - rgb_{timestamp}.png
+  - intrinsics
+    - camera_intrinsics.json
+
+Note that the csv file styles and timestamp style also differed.
+Please refer LocalData/DepthIMUData3/still for detailed examples.
+
+So please write a "DataLoaders/SeparatedFrameLoader.py" that loads these data and convert them into the legacy data style.
+
+When the coding, please note the following:
+- Keep the code structure clean, divide each codes in private methods, make them readable.
+  - If you want to change the code structure for clean architecture, please ask me with your idea.
+- If you have any questions or need a more specification, please feel free to ask back to me.

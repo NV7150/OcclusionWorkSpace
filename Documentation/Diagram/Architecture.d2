@@ -1,0 +1,116 @@
+direction: right
+
+# === core interfaces ===
+group core {
+  IRenderer: { shape: class }
+  IModel: { shape: class }
+  IScene: { shape: class }
+  IFrameLoader: { shape: class }
+  IOcclusionProvider: { shape: class }
+  ITracker: { shape: class }
+}
+
+# === Systems ===
+group Systems {
+  OcclusionSystem: { shape: class }
+  VisualizeSystem: { shape: class }
+  OcclusionProcessor: { shape: class }
+}
+
+# === Rendering ===
+group Rendering {
+  Renderer: { shape: class }
+  ShaderManager: { shape: class }
+  TextureManager: { shape: class }
+  BufferManager: { shape: class }
+  Framebuffer: { shape: class }
+  Camera: { shape: class }
+  Primitives: { shape: class }
+}
+
+# === Models ===
+group Models {
+  Model: { shape: class }
+  Mesh: { shape: class }
+  Material: { shape: class }
+  Texture: { shape: class }
+  JsonSceneLoader: { shape: class }
+  SceneManager: { shape: class }
+  FbxLoader: { shape: class }
+  ObjLoader: { shape: class }
+  BaseAssetLoader: { shape: class }
+  BaseSceneLoader: { shape: class }
+}
+
+# === DataLoaders ===
+group DataLoaders {
+  Frame: { shape: class }
+  UniformedFrameLoader: { shape: class }
+  SeparatedFrameLoader: { shape: class }
+  BaseFrameLoader: { shape: class }
+}
+
+# === Utils ===
+group Utils {
+  TransformUtils: { shape: class }
+  Logger: { shape: class }
+  MarkerPositionLoader: { shape: class }
+}
+
+# === Trackers ===
+group Trackers {
+  ApriltagTracker: { shape: class }
+}
+
+# === OcclusionProviders ===
+group OcclusionProviders {
+  ConcreteOcclusionProvider: { shape: class }
+}
+
+# === Dependencies and Inheritance ===
+OcclusionSystem -> IOcclusionProvider: uses
+OcclusionSystem -> IFrameLoader: uses
+OcclusionSystem -> IScene: uses
+OcclusionSystem -> IRenderer: uses
+OcclusionSystem -> OcclusionProcessor: uses
+OcclusionSystem -> TransformUtils: uses
+
+OcclusionProcessor -> IRenderer: uses
+OcclusionProcessor -> IModel: uses
+
+VisualizeSystem -> IFrameLoader: uses
+VisualizeSystem -> IScene: uses
+VisualizeSystem -> IRenderer: uses
+VisualizeSystem -> ITracker: uses
+VisualizeSystem -> TransformUtils: uses
+
+Renderer -> ShaderManager: uses
+Renderer -> TextureManager: uses
+Renderer -> BufferManager: uses
+Renderer -> Framebuffer: uses
+Renderer -> Camera: uses
+Renderer -> Primitives: uses
+Renderer -> IModel: renders
+Renderer -> TransformUtils: uses
+
+SceneManager -> IModel: manages instances
+SceneManager -> BaseSceneLoader: uses
+SceneManager -> TransformUtils: uses
+
+JsonSceneLoader -> BaseSceneLoader: inherits
+BaseSceneLoader -> IScene: creates
+
+FbxLoader -> BaseAssetLoader: inherits
+ObjLoader -> BaseAssetLoader: inherits
+BaseAssetLoader -> IModel: creates
+
+UniformedFrameLoader -> BaseFrameLoader: inherits
+SeparatedFrameLoader -> BaseFrameLoader: inherits
+BaseFrameLoader -> Frame: creates
+
+Renderer -> IRenderer: inherits
+Model -> IModel: inherits
+SceneManager -> IScene: inherits
+BaseFrameLoader -> IFrameLoader: inherits
+ConcreteOcclusionProvider -> IOcclusionProvider: inherits
+ApriltagTracker -> ITracker: inherits

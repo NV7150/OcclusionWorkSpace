@@ -1,0 +1,13 @@
+So, I'm in progress of refactoring.
+I leave the code refactoring to AI, but they did a only brief works.
+Please check the REAMDE.md (other docments are maybe legacy), and do this kind of things:
+
+- Please reduce importing the concreet modules, instead, use the core modules interfaces.
+- Fix false importing
+
+When the coding, please keep in your mind:
+- Reduce the tokens, do not do a multiple changes in solo file. Then you might not waste my money.
+- Keep the code structure clean, divide each codes in private methods, make them readable.
+  - If you want to change the code structure for clean architecture, please ask me with your idea.
+- If you have any questions or need a more specification, please feel free to ask back to me.
+

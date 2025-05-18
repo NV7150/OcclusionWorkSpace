@@ -1,0 +1,60 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DepthIMUData2-vis",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/Example/run_system.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/Example",
+            "args": [
+                "--config",
+                "${workspaceFolder}/Example/config_example.json"
+            ]
+        },
+        {
+            "name": "DepthIMUData3-vis",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/Example/run_system.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/Example",
+            "args": [
+                "--config",
+                "${workspaceFolder}/Example/DepthIMUData3-vis.json"
+            ]
+        },
+      {
+            "name": "DepthIMUData4-vis",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/Example/run_system.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/Example",
+            "args": [
+                "--config",
+                "${workspaceFolder}/Example/DepthIMUData4-vis.json"
+            ]
+        },
+        {
+            "name": "validate_dataloader",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/Example/validate_dataloader.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/Example",
+            "args": [
+                "--dataset-path",
+                "${workspaceFolder}/LocalData/test2",
+                "--threshold-ms",
+                "500",
+                "--num-frames-to-visualize",
+                "5"
+            ]
+        }
+    ]
+}

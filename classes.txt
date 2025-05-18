@@ -1,0 +1,256 @@
+@startuml "MR Occlusion Framework クラス図"
+
+' パッケージ定義
+package "core" {
+  interface IFrameLoader {
+    +load_data(): Dict
+    +get_frame_by_timestamp(timestamp): Optional[Frame] 
+    +get_frames_sorted(): List[Frame]
+  }
+
+  interface IOcclusionProvider {
+    +generate_occlusion_mask(frame: Frame, content_depth: np.ndarray): np.ndarray
+  }
+
+  interface IModel {
+    +get_vertices(): List[float]
+    +get_normals(): List[float]
+    +get_uvs(): List[float]
+    +get_indices(): List[int]
+    +get_materials(): Dict[str, Any]
+    +get_textures(): Dict[str, Any]
+    +get_meshes(): List[Any]
+    +get_bounding_box(): Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+  }
+
+  interface IRenderer {
+    +initialize(): void
+    +render_frame(frame, models: Dict[str, Any], scene_data: Dict): np.ndarray
+    +render_depth(models: Dict[str, Any], scene_data: Dict, camera_matrix: np.ndarray): np.ndarray
+    +set_camera(position: Tuple, target: Tuple, up: Tuple): void
+    +set_projection(fov: float, aspect: float, near: float, far: float): void
+    +cleanup(): void
+  }
+
+  interface IScene {
+  }
+
+  interface ITracker {
+    +initialize(marker_file: str): bool
+    +track_camera_pose(frame: Frame): np.ndarray
+  }
+
+  interface ITextureManager {
+  }
+}
+
+package "DataLoaders" {
+  class Frame {
+    +rgb_image: np.ndarray
+    +depth_image: np.ndarray
+    +timestamp: datetime
+    +imu_data: Dict
+  }
+
+  class BaseFrameLoader {
+  }
+
+  class UniformedFrameLoader {
+  }
+
+  class SeparatedFrameLoader {
+  }
+}
+
+package "Models" {
+  class Model {
+    +meshes: List[Mesh]
+    +add_mesh(mesh: Mesh): void
+    +draw(): void
+    +delete(): void
+  }
+
+  class Mesh {
+    +vertices: np.ndarray
+    +normals: np.ndarray
+    +indices: np.ndarray
+    +draw(): void
+    +delete(): void
+  }
+
+  class Material {
+  }
+
+  class Texture {
+  }
+
+  class BaseAssetLoader {
+  }
+
+  class FbxLoader {
+  }
+
+  class ObjLoader {
+  }
+
+  class BaseSceneLoader {
+  }
+
+  class JsonSceneLoader {
+  }
+
+  class SceneManager {
+  }
+}
+
+package "Rendering" {
+  class Renderer {
+  }
+
+  class ShaderManager {
+  }
+
+  class TextureManager {
+  }
+
+  class BufferManager {
+  }
+
+  class Framebuffer {
+  }
+
+  class Camera {
+  }
+
+  class Primitives {
+  }
+}
+
+package "Systems" {
+  class BaseSystem {
+    -system_type: Literal["occlusion", "visualize"]
+    -system: Union[OcclusionSystem, VisualizeSystem]
+    +__init__(system_type: Literal["occlusion", "visualize"])
+    +create(**kwargs): None
+    +process(**kwargs): None
+  }
+
+  class OcclusionSystem {
+    -data_loader: IFrameLoader
+    -model_loader: IModel
+    -occlusion_provider: IOcclusionProvider
+    -renderer: IRenderer
+    -processor: OcclusionProcessor
+    +create(data_dirs: List[str], model_dirs: List[str], output_dir: str, output_prefix: str, occlusion_provider: str, camera_matrix_file: Optional[str]): OcclusionSystem
+    +process(scene_name: Optional[str]): None
+  }
+
+  class VisualizeSystem {
+    -data_loader: IFrameLoader
+    -model_loader: IModel
+    -tracker: ITracker
+    -renderer: VisualizeModelRender
+    -frames: Dict
+    -models: Dict
+    -scenes: Dict
+    -marker_positions: Dict
+    -camera_poses: Dict
+    -is_running: bool
+    +__init__(scene_model_path: str, frames_dir: str, marker_file: str, camera_matrix_file: str, render_obj_dir: str, tag_size: float, tag_family: str, log_keys: Optional[List[str]])
+    +process(): None
+    -_load_camera_matrix(file_path: str): np.ndarray
+    -_visualize_scene(): None
+  }
+
+  class OcclusionProcessor {
+    -renderer: IRenderer
+    +process_frame(frame: Frame, models: Dict, scene_data: Dict, camera_matrix: np.ndarray): np.ndarray
+  }
+
+  class VisualizeModelRender {
+    +initialize(scene_model_path: str): void
+    +setup_scene(marker_positions: Dict, camera_poses: Dict, models: Dict, scenes: Dict): void
+    +start_render_loop(): void
+  }
+
+  class Shader {
+    +use(): void
+    +set_uniform_matrix4fv(name: str, value: np.ndarray): void
+    +set_uniform_3fv(name: str, value: np.ndarray): void
+    +set_uniform_1f(name: str, value: float): void
+    +set_uniform_1i(name: str, value: int): void
+  }
+}
+
+package "OcclusionProviders" {
+  class SimpleOcclusionProvider {
+  }
+
+  class DepthThresholdOcclusionProvider {
+  }
+}
+
+package "Trackers" {
+  class ApriltagTracker {
+  }
+}
+
+' 継承関係
+BaseFrameLoader ..|> IFrameLoader
+UniformedFrameLoader --|> BaseFrameLoader
+SeparatedFrameLoader --|> BaseFrameLoader
+
+Renderer ..|> IRenderer
+
+FbxLoader --|> BaseAssetLoader
+ObjLoader --|> BaseAssetLoader
+
+JsonSceneLoader --|> BaseSceneLoader
+
+SimpleOcclusionProvider ..|> IOcclusionProvider
+DepthThresholdOcclusionProvider ..|> IOcclusionProvider
+
+ApriltagTracker ..|> ITracker
+
+Model ..|> IModel
+SceneManager ..|> IScene
+
+' 依存関係
+BaseSystem --> OcclusionSystem : creates/uses when system_type="occlusion"
+BaseSystem --> VisualizeSystem : creates/uses when system_type="visualize"
+
+OcclusionSystem --> IOcclusionProvider
+OcclusionSystem --> IFrameLoader
+OcclusionSystem --> IScene
+OcclusionSystem --> IRenderer
+OcclusionSystem --> OcclusionProcessor
+OcclusionProcessor --> IRenderer
+OcclusionProcessor --> IModel
+
+VisualizeSystem --> IFrameLoader
+VisualizeSystem --> IScene
+VisualizeSystem --> IRenderer
+VisualizeSystem --> ITracker
+
+Renderer --> ShaderManager
+Renderer --> TextureManager
+Renderer --> BufferManager
+Renderer --> Framebuffer
+Renderer --> Camera
+Renderer --> Primitives
+Renderer --> IModel : renders
+
+SceneManager --> IModel : manages instances
+SceneManager --> BaseSceneLoader
+
+JsonSceneLoader --> IScene : creates
+
+BaseAssetLoader --> IModel : creates
+
+BaseFrameLoader --> Frame : creates
+
+VisualizeModelRender --> Shader
+VisualizeModelRender --> Model
+VisualizeModelRender --> Mesh
+
+@enduml

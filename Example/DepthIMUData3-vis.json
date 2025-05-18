@@ -1,0 +1,15 @@
+{
+    "command": "visualize",
+    "sceneModel": "../LocalData/DepthIMUData3/models/desk.fbx",
+    "framesDir": "../LocalData/DepthIMUData3/slow1",
+    "markerFile": "../LocalData/DepthIMUData3/models/marker_poses_opengl.json",
+    "cameraMatrix": "../LocalData/camera_ipadpro.csv",
+    "renderObjDir": "../LocalData/Models",
+    "sceneJson": "../LocalData/Models/Scene1/Scene1.json",
+    "tagSize": 0.086,
+    "tagFamily": "tagStandard41h12",
+    "log_keys": ["error", "system", "debug", "warning"],
+    "log_to_file": false,
+    "log_file": "./logs/visualization_run.log",
+    "loaderType": "separated"
+  } 

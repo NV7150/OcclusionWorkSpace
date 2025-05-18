@@ -1,0 +1,1 @@
+python BaseSystem.py --system-type visualize --scene-model '../LocalData/SceneModel/on_the_desk.fbx' --marker-file '../LocalData/Env_3DModels/marker_poses.opengl.json' --tag-size 0.089 --tag-family 'tagStandard4h12' --model-dirs '../LocalData/Models/Scene1' --data-dirs '../LocalData/DepthIMUData2/slow'

@@ -2,7 +2,7 @@ import json
 import os
 import numpy as np
 from typing import Dict, Any, Optional, Union
-from Logger import logger, Logger
+from .Logger import logger, Logger
 
 class MarkerPositionLoader:
     """

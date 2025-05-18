@@ -1,10 +1,10 @@
 import numpy as np
 import cv2
 import open3d as o3d
-from Logger import logger, Logger
+from .Logger import logger, Logger
 
 # グローバル変数: Trueの場合OpenCV座標系、Falseの場合Open3D座標系を使用
-is_opencv = False
+is_opencv = True
 
 # 座標系変換のヘルパー関数
 def convert_coordinates(points, vectors=None):
@@ -44,8 +44,7 @@ def visualize_pnp_result(object_points: np.ndarray, result: np.ndarray, marker_p
         result (np.ndarray): (6,) or (6,1) の [rvec; tvec]
     """
     assert object_points.shape[1] == 3, "object_points must be of shape (n, 3)"
-    result = result.flatten()
-    assert result.shape[0] == 6, "result must be of shape (6,) or (6,1)"
+
 
     open3d_to_opencv = np.array([
         [1,  0,  0],
@@ -75,7 +74,7 @@ def visualize_pnp_result(object_points: np.ndarray, result: np.ndarray, marker_p
         cam_pos = tvec_opengl
         
         # Convert object points from OpenCV to OpenGL coordinate system
-        object_points = object_points @ opencv_to_opengl.T
+        # object_points = object_points @ opencv_to_opengl.T
     
 
     # 各点に異なる色を割り当て
